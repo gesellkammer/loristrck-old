@@ -30,7 +30,7 @@ def analyze(double[::1] samples not None, double srate, double resolution, doubl
     The rest of the parameters are set with sensible defaults if not given
     explicitely. 
     """
-    if window_width = -1:
+    if window_width < 0:
         window_width = resolution * 2  # original Loris behaviour
     cdef loris.Analyzer* an = new loris.Analyzer(resolution, window_width)
     if hop_time > 0:
@@ -55,6 +55,7 @@ def analyze(double[::1] samples not None, double srate, double resolution, doubl
         partial = deref(p_it)
         yield partial.label(), partial_to_array(&partial)
         inc(p_it)
+    del an
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -80,7 +81,7 @@ cdef np.ndarray partial_to_array(loris.Partial* p):
     return arr
 
 def read_sdif(sdiffile):
-    cdef loris.SdifFile sdif = new loris.SdifFile(string(<char*>sdiffile))
+    cdef loris.SdifFile* sdif = new loris.SdifFile(string(<char*>sdiffile))
     cdef loris.PartialList partials = sdif.partials()
 
     # yield all partials
@@ -92,5 +93,6 @@ def read_sdif(sdiffile):
         partial = deref(p_it)
         yield partial.label(), partial_to_array(&partial)
         inc(p_it)
+    del sdif
 
 

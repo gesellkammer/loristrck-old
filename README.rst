@@ -20,7 +20,6 @@ Additional Python Module Dependencies
 * Cython_
 * NumPy
 * SciPy
-* sndfileio
 
 .. _Cython: http://cython.org
 
@@ -38,8 +37,8 @@ Usage
 -----
 
 ::
-    from loristrck import analyze
-    from e.sndfileio import read_sndfile
+
+    from loristrck import analyze, read_sndfile
     sndfile = read_sndfile("/path/to/sndfile.wav")
     partials = analyze(sndfile.samples, sndfile.sr, resolution=50, window_width=80)
     for label, data in partials:
@@ -53,10 +52,11 @@ Goal
 ----
 
 The main goal was as an analysis tool for the package `sndtrck`, which implements
-an agnostic data structure to handle partial tracking information. So if `trckr`
+an agnostic data structure to handle partial tracking information. So if `sndtrck`
 is installed, it can be used as:
 
 ::
+
     import sndtrck
     spectrum = sndtrck.analyze_loris("/path/to/sndfile", resolution=50)
     print spectrum.chord_at(0.5)

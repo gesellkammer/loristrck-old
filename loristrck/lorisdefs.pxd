@@ -60,6 +60,7 @@ cdef extern from "../src/loris/src/Analyzer.h" namespace "Loris":
 cdef extern from "../src/loris/src/SdifFile.h" namespace "Loris":
     cppclass SdifFile "Loris::SdifFile":
         SdifFile( string & filename)  # to convert from python string: string(<char*>pythonstring)
-        PartialList & partials(void)
+        PartialList & partials()
         void write( string & path )
         void write1TRC( string & path )
+        
