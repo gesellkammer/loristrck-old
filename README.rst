@@ -27,7 +27,17 @@ Additional Python Module Dependencies
 Installation
 ------------
 
-To build and install everything, from the root folder run:
+1) If you haven't, install FFTW3. Loris depends on it to perform in an acceptable way.
+    * OSX: the best alternative is to install via Macports
+    * Linux: you probably already have fftw3!
+    * Windows: 
+        + go to http://www.fftw.org/install/windows.html
+        + download the 32-bit binary package
+        + unzip to a directory of your choice. Suggestion: C:\bin
+        + put that directory in your PATH
+        + open the file setup.py and add that directory to the variable `library_dirs`
+
+2) To build and install everything, from the root folder run:
 
 ::
 
@@ -38,8 +48,9 @@ Usage
 
 ::
 
-    from loristrck import analyze, read_sndfile
-    sndfile = read_sndfile("/path/to/sndfile.wav")
+    from loristrck import analyze
+    from sndfileio import read_sndfile, mono
+    sndfile = read_sndfile("/path/to/mono_sndfile.wav")
     partials = analyze(sndfile.samples, sndfile.sr, resolution=50, window_width=80)
     for label, data in partials:
         print data

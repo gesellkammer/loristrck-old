@@ -95,4 +95,34 @@ def read_sdif(sdiffile):
         inc(p_it)
     del sdif
 
+def read_aiff(path):
+    """
+    read a mono AIFF file (Loris does not read stereo files)
+
+    DONT attempt to read a multi-channel file or your program will crash!
+    """
+    cdef loris.AiffFile* f = new loris.AiffFile(string(<char*>path))
+    cdef vector[double] samples = f.samples()
+    cdef double[:] mono
+    cdef int i, numFrames
+    cdef vector[double].iterator it
+    cdef int channels = f.numChannels()
+    if channels == 1:
+        numFrames = f.numFrames()
+        mono = np.empty((numFrames,), dtype='float64')
+        it = samples.begin()
+        while i < numFrames:
+            mono[i] = deref(it)
+            i += 1
+            inc(it)
+        return mono
+    else:
+        raise ValueError("attempting to read a multi-channel (>1) AIFF channel!")
+
+
+
+
+
+    
+
 

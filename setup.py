@@ -1,11 +1,21 @@
 '''
-DESCRIPTION
+LORISTRCK: a basic wrapper around the partial-tracking library Loris
+
+This is the simplest wrapper possible for the partial-tracking library Loris. 
+The source of the library is included as part of the project --there is no need
+to install the library independently. 
+
+The main goal was as an analysis tool for the package `sndtrck`, which implements
+an agnostic data structure to handle partial tracking information
+
 '''
 import os
 import glob
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
+
+PARALLEL = True
 
 # ----------------------------------------------
 # monkey-patch for parallel compilation
@@ -14,9 +24,9 @@ def parallelCCompile(self, sources, output_dir=None, macros=None, include_dirs=N
     # those lines are copied from distutils.ccompiler.CCompiler directly
     macros, objects, extra_postargs, pp_opts, build =  self._setup_compile(output_dir, macros, include_dirs, sources, depends, extra_postargs)
     cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
-    # parallel code
-    N = 2 # <---------- number of parallel compilations
-    import multiprocessing.pool
+    
+    import multiprocessing
+    N = multiprocessing.cpu_count()
     def _single_compile(obj):
         try: src, ext = build[obj]
         except KeyError: return
@@ -25,7 +35,9 @@ def parallelCCompile(self, sources, output_dir=None, macros=None, include_dirs=N
     list(multiprocessing.pool.ThreadPool(N).imap(_single_compile,objects))
     return objects
 import distutils.ccompiler
-distutils.ccompiler.CCompiler.compile = parallelCCompile
+
+if PARALLEL:
+    distutils.ccompiler.CCompiler.compile = parallelCCompile
 
 # -----------------------------------------------------------------------------
 # Global
@@ -92,23 +104,6 @@ loris_exclude += [os.path.join(loris_base, filename) for filename in  \
 loris_sources = list(set(loris_sources) - set(loris_exclude))
 sources.extend(loris_sources)
 
-# -----------------------------------------------------------------------------
-# Base
-# -----------------------------------------------------------------------------
-
-# base = Extension(
-#     'ltrckr.base',
-#     sources=['ltrckr/base.pyx',
-#              'src/ltrckr/base.cpp',
-#              'src/ltrckr/exceptions.cpp'],
-#     include_dirs=include_dirs,
-#     library_dirs=library_dirs,
-#     language='c++'
-# )
-
-# -----------------------------------------------------------------------------
-# Loris
-# -----------------------------------------------------------------------------
 loris = Extension(
     'loristrck.lorisdefs',
     sources=sources + ['loristrck/lorisdefs.pyx'],

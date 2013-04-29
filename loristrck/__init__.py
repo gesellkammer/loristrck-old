@@ -1,1 +1,1 @@
-import lorisdefs
+from lorisdefs import *
