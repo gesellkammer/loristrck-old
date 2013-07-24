@@ -7,14 +7,12 @@ The source of the library is included as part of the project, so there is no nee
 to install the library independently. 
 
 C++ Library Dependencies:
-
   * fftw3_
 
 .. _fftw3: http://www.fftw.org
 
 
 Additional Python Module Dependencies:
-
   * Python (>= 2.7.*)
   * Cython_
   * NumPy
@@ -27,7 +25,6 @@ Installation
 ------------
 
 1) If you haven't, install FFTW3. Loris depends on it to perform in an acceptable way
-
     * OSX
         + the best alternative is to install via Macports
     * Linux
