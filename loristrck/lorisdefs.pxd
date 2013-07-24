@@ -1,11 +1,5 @@
-import numpy as np
-cimport numpy as np
-np.import_array()
 from libcpp.string cimport string
-#from libcpp.list cimport list as stdlist
-#from libcpp.map  cimport map  as stdmap
 from libcpp.vector cimport vector
-#from libcpp cimport bool
 
 cdef extern from "../src/loris/src/Breakpoint.h" namespace "Loris":
     cdef cppclass Breakpoint "Loris::Breakpoint":

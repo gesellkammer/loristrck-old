@@ -1,1 +1,1 @@
-from lorisdefs import *
+from _core import *

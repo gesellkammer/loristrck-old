@@ -8,14 +8,34 @@ to install the library independently.
 The main goal was as an analysis tool for the package `sndtrck`, which implements
 an agnostic data structure to handle partial tracking information
 
+Dependencies: 
+
+* fftw3
+
 '''
 import os
+import sys
 import glob
-from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Distutils import build_ext
+from setuptools import setup, Extension
+try:
+    from Cython.Distutils import build_ext
+    import numpy
+except ImportError:
+    setup(
+        install_requires=[
+            'cython>=0.19',
+            'numpy>1.5'
+        ]
+    )
+    try:
+        from Cython.Distutils import build_ext
+    except ImportError:
+        print "Cython is necessary to build this package."
+        print "An attempt to install Cython just failed."
+        print "Please install it on your own and try again."
+        sys.exit()
 
-PARALLEL = True
+PARALLEL = False
 
 # ----------------------------------------------
 # monkey-patch for parallel compilation
@@ -43,9 +63,6 @@ if PARALLEL:
 # Global
 # -----------------------------------------------------------------------------
 
-# detect platform
-platform = os.uname()[0] if hasattr(os, 'uname') else 'Windows'
-
 # get numpy include directory
 try:
     import numpy
@@ -59,18 +76,44 @@ except ImportError:
 
 macros = []
 link_args = []
-include_dirs = ['loristrck', 'src/loristrck',
-                'src/loris', numpy_include, '/usr/local/include', 
-                '/src/fftw',    # the path of the directory where fftw was unzipped
-                ]
-libs = ['m', 'fftw3']
-compile_args = ['-DMERSENNE_TWISTER', '-DHAVE_FFTW3_H', "-march=i686"]
-library_dirs = [
-    '/src/fftw'               # the path to the fftw .dll(s)
-    ]
 
-if platform == 'Windows':
+include_dirs = [
+    'loristrck', 
+    'src/loristrck',
+    'src/loris', 
+    numpy_include
+]
+
+library_dirs = []
+
+#######################################
+# Mac OSX
+######################################
+if sys.platform == 'darwin':
+    include_dirs.extend([
+        '/usr/local/include',
+        '/opt/local/include'
+    ])
+    library_dirs.extend([
+        '/opt/local/lib'
+    ])
+######################################
+# Windows
+######################################
+elif sys.platform == 'win32':
+    include_dirs.extend([
+        '/src/fftw'     # the path of the directory where fftw was unzipped
+    ])
+    library_dirs.extend([
+        '/src/fftw'     # the path of the directory where fftw was unzipped
+    ])
+    compile_args.append("-march-i686")
     print "NB: make sure that the FFTW dlls are in the windows PATH"
+
+
+libs = ['m', 'fftw3']
+compile_args = ['-DMERSENNE_TWISTER', '-DHAVE_FFTW3_H']
+
 
 sources = []
 
@@ -100,13 +143,12 @@ loris_exclude += [os.path.join(loris_base, filename) for filename in  \
         "lorisException_pi.C"
     )]   
 
-
 loris_sources = list(set(loris_sources) - set(loris_exclude))
 sources.extend(loris_sources)
 
 loris = Extension(
-    'loristrck.lorisdefs',
-    sources=sources + ['loristrck/lorisdefs.pyx'],
+    'loristrck._core',
+    sources=sources + ['loristrck/_core.pyx'],
     include_dirs=include_dirs,
     libraries=libs,
     library_dirs=library_dirs,
@@ -129,5 +171,11 @@ setup(
     version='0.3',
     ext_modules=[loris],
     cmdclass={'build_ext': build_ext},
-    packages=['loristrck']
+    packages=['loristrck'],
+    install_requires = [ 
+        'numpy>=1.6',
+        'scipy>=0.10',
+        'cython>=0.19'
+        
+    ]
 )

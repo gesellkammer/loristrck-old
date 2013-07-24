@@ -4,3 +4,7 @@ build/
 *.o
 *.lo
 *.pyc
+*egg*
+.gitignore
+*.cpp
+*.c
