@@ -3,11 +3,16 @@ from libcpp.vector cimport vector
 
 cdef extern from "../src/loris/src/Breakpoint.h" namespace "Loris":
     cdef cppclass Breakpoint "Loris::Breakpoint":
+        # Breakpoint( double f, double a, double b, double p = 0.)
         double frequency()
         double amplitude()
         double bandwidth()
         double phase()
-
+        void setAmplitude(double x)
+        void setBandwidth(double x)
+        void setFrequency(double x)
+        void setPhase(double x)
+        
 cdef extern from "../src/loris/src/Partial.h" namespace "Loris":
     cppclass Partial_Iterator "Loris::Partial_Iterator"
     cppclass Partial "Loris::Partial":
@@ -18,6 +23,7 @@ cdef extern from "../src/loris/src/Partial.h" namespace "Loris":
         double duration()
         Partial_Iterator begin()
         Partial_Iterator end()
+        Partial_Iterator insert( double time, Breakpoint & bp )
         
     cppclass Partial_Iterator "Loris::Partial_Iterator":
         Breakpoint & breakpoint()
@@ -50,6 +56,11 @@ cdef extern from "../src/loris/src/Analyzer.h" namespace "Loris":
         void setFreqDrift( double )
         void setSidelobeLevel( double )
         void setAmpFloor( double )
+
+cdef extern from "../src/loris/src/Synthesizer.h" namespace "Loris":
+    cppclass Synthesizer "Loris::Synthesizer":
+        Synthesizer(double srate, vector[double] &buffer, double fadeTime)
+        void synthesize( Partial p )
     
 cdef extern from "../src/loris/src/SdifFile.h" namespace "Loris":
     cppclass SdifFile "Loris::SdifFile":

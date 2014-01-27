@@ -4,7 +4,7 @@ from libcpp.vector cimport vector
 cimport lorisdefs as loris
 cimport cython
 from cython.operator cimport dereference as deref, preincrement as inc
-import numpy  as _np
+import numpy as _np
 cimport numpy as _np
 
 _np.import_array()
@@ -87,13 +87,12 @@ cdef _np.ndarray partial_to_array(loris.Partial* p):
     cdef double[:, :] a = arr
     cdef loris.Partial_Iterator it  = p.begin()
     cdef loris.Partial_Iterator end = p.end()
-    cdef loris.Breakpoint bp
+    cdef loris.Breakpoint *bp
     cdef double time
     cdef int i = 0
     while it != end:
-        bp = it.breakpoint()
-        time = it.time()
-        a[i, 0] = time
+        bp = &(it.breakpoint())
+        a[i, 0] = it.time()
         a[i, 1] = bp.frequency()
         a[i, 2] = bp.amplitude()
         a[i, 3] = bp.phase()
@@ -101,6 +100,22 @@ cdef _np.ndarray partial_to_array(loris.Partial* p):
         i += 1
         inc(it)
     return arr
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef loris.Partial* array_to_partial(_np.ndarray[SAMPLE_t, ndim=2] a):
+    cdef int numbps = len(a)
+    cdef loris.Partial *p = new loris.Partial()
+    cdef loris.Breakpoint *bp
+    # each row in a is (time, freq, amp, phase, bw)
+    for i in range(numbps):
+        bp = new loris.Breakpoint()
+        bp.setFrequency(a[i, 1])
+        bp.setAmplitude(a[i, 2])
+        bp.setPhase(a[i, 3])
+        bp.setBandwidth(a[i, 4])
+        p.insert(a[i, 0], deref(bp))
+    return p
 
 def read_sdif(sdiffile):
     """
@@ -164,3 +179,4 @@ def read_aiff(path):
         return (mono, samplerate)
     else:
         raise ValueError("attempting to read a multi-channel (>1) AIFF file!")
+

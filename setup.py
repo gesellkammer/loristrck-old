@@ -176,6 +176,5 @@ setup(
         'numpy>=1.6',
         'scipy>=0.10',
         'cython>=0.19'
-        
     ]
 )
