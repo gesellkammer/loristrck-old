@@ -85,6 +85,8 @@ include_dirs = [
 ]
 
 library_dirs = []
+libs = ['m', 'fftw3']
+compile_args = ['-DMERSENNE_TWISTER', '-DHAVE_FFTW3_H']
 
 #######################################
 # Mac OSX
@@ -107,13 +109,8 @@ elif sys.platform == 'win32':
     library_dirs.extend([
         '/src/fftw'     # the path of the directory where fftw was unzipped
     ])
-    compile_args.append("-march-i686")
+    compile_args.append("-march=i686")
     print "NB: make sure that the FFTW dlls are in the windows PATH"
-
-
-libs = ['m', 'fftw3']
-compile_args = ['-DMERSENNE_TWISTER', '-DHAVE_FFTW3_H']
-
 
 sources = []
 
