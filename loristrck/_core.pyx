@@ -103,10 +103,19 @@ cdef _np.ndarray partial_to_array(loris.Partial* p):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef loris.Partial* array_to_partial(_np.ndarray[SAMPLE_t, ndim=2] a):
-    cdef int numbps = len(a)
+cdef loris.Partial* array_to_partial(_np.ndarray[SAMPLE_t, ndim=2] a, double fadetime=0.0):
     cdef loris.Partial *p = new loris.Partial()
+    cdef int numbps = len(a)
     cdef loris.Breakpoint *bp
+    
+    if fadetime > 0 and a[0, 2] > 0:
+        bp = new loris.Breakpoint()
+        bp.setFrequency(a[0, 1])
+        bp.setAmplitude(0)
+        bp.setPhase(a[0, 3])
+        bp.setBandwidth(a[0, 4])
+        p.insert(a[0, 0] - fadetime, deref(bp))
+
     # each row in a is (time, freq, amp, phase, bw)
     for i in range(numbps):
         bp = new loris.Breakpoint()
@@ -115,6 +124,62 @@ cdef loris.Partial* array_to_partial(_np.ndarray[SAMPLE_t, ndim=2] a):
         bp.setPhase(a[i, 3])
         bp.setBandwidth(a[i, 4])
         p.insert(a[i, 0], deref(bp))
+
+    if fadetime > 0 and a[numbps-1, 2] > 0:
+        bp = new loris.Breakpoint()
+        bp.setFrequency(a[numbps-1, 1])
+        bp.setAmplitude(0)
+        bp.setPhase(a[numbps-1, 3])
+        bp.setBandwidth(a[numbps-1, 4])
+        p.insert(a[numbps-1, 0] + fadetime, deref(bp))
+
+    return p
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef loris.Partial* array_to_partial2(_np.ndarray[SAMPLE_t, ndim=2] a, double fadetime=0.0):
+
+    cdef int numbps = len(a)
+    cdef loris.Partial *p = new loris.Partial()
+    cdef loris.Breakpoint *bp
+    cdef loris.Breakpoint *bp2
+    cdef double amp, t
+    cdef loris.Breakpoint b
+    # each row in a is (time, freq, amp, phase, bw)
+    for i in range(numbps):
+        bp = new loris.Breakpoint()
+        bp.setFrequency(a[i, 1])
+        bp.setAmplitude(a[i, 2])
+        bp.setPhase(a[i, 3])
+        bp.setBandwidth(a[i, 4])
+        p.insert(a[i, 0], deref(bp))
+
+    if fadetime > 0:
+        # fadetime only takes effect if the partial begins or ends with non-zero amp
+        bp = &(p.first())
+        t = p.startTime() - fadetime
+
+        amp = bp.amplitude()
+        if amp > 0:
+            bp2 = new loris.Breakpoint()
+            bp2.setFrequency(bp.frequency())
+            bp2.setAmplitude(0)
+            bp2.setPhase(p.phaseAt(t))
+            bp2.setBandwidth(bp.bandwidth())
+            p.insert(t, deref(bp2))
+
+        bp = &(p.last())
+        t = p.endTime() + fadetime
+
+        amp = bp.amplitude()
+        if amp > 0:
+            bp2 = new loris.Breakpoint()
+            bp2.setFrequency(bp.frequency())
+            bp2.setAmplitude(0)
+            bp2.setPhase(p.phaseAt(t))
+            bp2.setBandwidth(bp.bandwidth())
+            p.insert(t, deref(bp2))
+
     return p
 
 def read_sdif(sdiffile):
@@ -132,9 +197,11 @@ def read_sdif(sdiffile):
     data : a 2D numpy array with the columns --> time freq amp phase bw
 
     """
-    cdef loris.SdifFile* sdif = new loris.SdifFile(string(<char*>sdiffile))
-    cdef loris.PartialList partials = sdif.partials()
-
+    cdef loris.SdifFile* sdif
+    cdef loris.PartialList partials
+    cdef string filename = string(<char*>sdiffile)
+    sdif = new loris.SdifFile(filename)
+    partials = sdif.partials()
     # yield all partials
     cdef loris.PartialListIterator p_it = partials.begin()
     cdef loris.PartialListIterator p_end = partials.end()
@@ -142,9 +209,61 @@ def read_sdif(sdiffile):
     cdef int n = 0
     while p_it != p_end:
         partial = deref(p_it)
-        yield partial.label(), partial_to_array(&partial)
+        yield (partial.label(), partial_to_array(&partial))
         inc(p_it)
     del sdif
+
+def write_sdif(outfile, partials, labels=None, rbep=True, double fadetime=0):
+    """
+    Write a list of partials in the sdif 
+    partials: a seq. of matrices where matrix is a 2D numpy arrays of the format [time freq amp phase bw]
+    labels: a seq. if integer labels
+    rbep: if True, use RBEP format, otherwise, 1TRC
+
+    NB: The 1TRC format forces resampling
+    """
+    cdef loris.PartialList *partial_list = _partials_from_data(partials, fadetime)
+    cdef loris.SdifFile* sdiffile = new loris.SdifFile(partial_list.begin(), partial_list.end())
+    print("saving to sdif")
+    cdef string filename = string(<char*>outfile)
+    cdef int use_rbep = int(rbep)
+    if labels is not None:
+        _partials_set_labels(partial_list, labels)
+    with nogil:
+        if use_rbep:
+            sdiffile.write(filename)
+        else:
+            sdiffile.write1TRC(filename)
+    del partials
+    del sdiffile
+
+cdef void _partials_set_labels(loris.PartialList *partial_list, labels):
+    cdef loris.PartialListIterator p_it = partial_list.begin()
+    cdef loris.PartialListIterator p_end = partial_list.end()
+    cdef loris.Partial partial
+    for label in labels:
+        partial = deref(p_it)
+        partial.setLabel(label)
+        inc(p_it)
+        if p_it == p_end:
+            break
+
+cdef loris.PartialList* _partials_from_data(data, double fadetime=0):
+    """
+    data: a seq. where matrix is a 2D array of type 
+          [time, freq, amp, phase, bw]
+
+    NB: to set the labels of the partials, call _partials_set_labels
+    """
+    cdef loris.PartialList *partials = new loris.PartialList()
+    cdef loris.Partial *partial
+    cdef int i = 0
+    cdef int label
+    for matrix in data:
+        partial = array_to_partial(matrix, fadetime)
+        partials.push_back(deref(partial))
+        i += 1
+    return partials
 
 def read_aiff(path):
     """
@@ -180,3 +299,35 @@ def read_aiff(path):
     else:
         raise ValueError("attempting to read a multi-channel (>1) AIFF file!")
 
+cdef object _partials_timespan(loris.PartialList * partials):
+    cdef loris.PartialListIterator it = partials.begin()
+    cdef loris.PartialListIterator end = partials.end()
+    cdef loris.Partial partial = deref(it)
+    cdef double tmin = partial.startTime()
+    cdef double tmax = partial.endTime()
+    while it != end:
+        partial = deref(it)
+        tmin = min(tmin, partial.startTime())
+        tmax = max(tmax, partial.endTime())
+        inc(it)
+    return tmin, tmax
+
+def synthesize(data, samplerate=48000, time_selection=None):
+    """
+    data: a seq. of 2D matrices, each matrix represents a partial
+              Each row is a breakpoint of the form [time freq amp phase bw]
+    time_selection: if given, a tuple (start_time, end_time).
+                    (0.5, None) --> synthesize from 0.5 to end of spectrum
+                    (None, 10)  --> synthesize from beginning to time=10
+    """
+
+    if time_selection is not None:
+        t0, t1 = time_selection
+    cdef loris.PartialList *partials = _partials_from_data(data)
+    tmin, tmax = _partials_timespan(partials)
+    if t0 is None:
+        t0 = tmin
+    if t1 is None:
+        t1 = tmax
+    del partials
+    return 

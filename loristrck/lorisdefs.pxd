@@ -20,10 +20,14 @@ cdef extern from "../src/loris/src/Partial.h" namespace "Loris":
         double endTime()
         int numBreakpoints()
         int label()
+        void setLabel( int label )
         double duration()
         Partial_Iterator begin()
         Partial_Iterator end()
         Partial_Iterator insert( double time, Breakpoint & bp )
+        Breakpoint & first()
+        Breakpoint & last()
+        double phaseAt( double time )
         
     cppclass Partial_Iterator "Loris::Partial_Iterator":
         Breakpoint & breakpoint()
@@ -33,10 +37,11 @@ cdef extern from "../src/loris/src/Partial.h" namespace "Loris":
         Partial_Iterator operator++()
 
 cdef extern from "../src/loris/src/PartialList.h" namespace "Loris":
-    cppclass PartilListIterator "Loris::PartialListIterator"
+    cppclass PartialListIterator "Loris::PartialListIterator"
     cppclass PartialList "Loris::PartialList":
         PartialListIterator begin()
         PartialListIterator end()
+        void push_back( Partial & p )
         bint empty()
         unsigned int size()
 
@@ -45,6 +50,7 @@ cdef extern from "../src/loris/src/PartialList.h" namespace "Loris":
         bint operator!= (PartialListIterator)
         Partial operator* ()
         PartialListIterator operator++()
+
 
 cdef extern from "../src/loris/src/Analyzer.h" namespace "Loris":
     cppclass Analyzer "Loris::Analyzer":
@@ -64,10 +70,13 @@ cdef extern from "../src/loris/src/Synthesizer.h" namespace "Loris":
     
 cdef extern from "../src/loris/src/SdifFile.h" namespace "Loris":
     cppclass SdifFile "Loris::SdifFile":
-        SdifFile( string & filename)  # to convert from python string: string(<char*>pythonstring)
+        SdifFile( string & filename )  # to convert from python string: string(<char*>pythonstring)
+        SdifFile( PartialListIterator begin, PartialListIterator end )
         PartialList & partials()
-        void write( string & path )
-        void write1TRC( string & path )
+        void addPartial( Partial & p)
+        void addPartials( PartialListIterator begin, PartialListIterator end )
+        void write( string & path ) nogil
+        void write1TRC( string & path ) nogil
 
 cdef extern from "../src/loris/src/AiffFile.h" namespace "Loris":
     cppclass AiffFile "Loris::AiffFile":
@@ -77,4 +86,14 @@ cdef extern from "../src/loris/src/AiffFile.h" namespace "Loris":
         double sampleRate()
         vector[double] & samples()
 
+cdef extern from "../src/loris/src/loris.h": #  namespace "Loris":
+    void resample( PartialList * partials, double interval )
+    void shapeSpectrum( PartialList * partials, PartialList * surface,
+                        double stretchFreq, double stretchTime )
 
+
+    unsigned int synthesize( const PartialList * partials,
+                             double * buffer, unsigned int bufferSize,
+                             double srate)
+
+    # void timeSpan( PartialList * partials, double * tmin, double * tmax )

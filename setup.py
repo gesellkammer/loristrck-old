@@ -30,9 +30,9 @@ except ImportError:
     try:
         from Cython.Distutils import build_ext
     except ImportError:
-        print "Cython is necessary to build this package."
-        print "An attempt to install Cython just failed."
-        print "Please install it on your own and try again."
+        print("Cython is necessary to build this package.")
+        print("An attempt to install Cython just failed.")
+        print("Please install it on your own and try again.")
         sys.exit()
 
 PARALLEL = False
@@ -71,7 +71,7 @@ try:
     except AttributeError:
         numpy_include = numpy.get_numpy_include()
 except ImportError:
-    print 'Error: Numpy was not found.'
+    print('Error: Numpy was not found.')
     exit(1)
 
 macros = []
@@ -108,7 +108,7 @@ elif sys.platform == 'win32':
         '/src/fftw'     # the path of the directory where fftw was unzipped
     ])
     compile_args.append("-march-i686")
-    print "NB: make sure that the FFTW dlls are in the windows PATH"
+    print("NB: make sure that the FFTW dlls are in the windows PATH")
 
 
 libs = ['m', 'fftw3']
