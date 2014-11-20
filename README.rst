@@ -52,7 +52,6 @@ Usage
 ::
 
     from loristrck import analyze
-    from sndfileio import read_sndfile, mono
     sndfile = read_sndfile("/path/to/mono_sndfile.wav")
     partials = analyze(sndfile.samples, sndfile.sr, resolution=50, window_width=80)
     for label, data in partials:
