@@ -26,7 +26,7 @@ Installation
 
 1) If you haven't, install FFTW3. Loris depends on it to perform in an acceptable way
     * OSX
-        + the best alternative is to install via Macports
+        + the best alternative is to install via homebrew
     * Linux
         + you probably already have fftw3
     * Windows
