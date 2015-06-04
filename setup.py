@@ -176,7 +176,7 @@ setup(
     author='Eduardo Moguillansky',
     author_email='eduardo.moguillansky@gmail.com',
     platforms=['Linux', 'Mac OS-X', 'Unix', 'Windows'],
-    version='0.4',
+    version='0.5',
     ext_modules=[loris],
     cmdclass={'build_ext': build_ext},
     packages=['loristrck'],
