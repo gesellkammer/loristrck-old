@@ -41,7 +41,10 @@ cdef extern from "../src/loris/src/PartialList.h" namespace "Loris":
     cppclass PartialList "Loris::PartialList":
         PartialListIterator begin()
         PartialListIterator end()
-        void push_back( Partial & p )
+        void push_back(Partial& p)
+        void pop_front()
+        Partial& front()
+        void clear()
         bint empty()
         unsigned int size()
 
