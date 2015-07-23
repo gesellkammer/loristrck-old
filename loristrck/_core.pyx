@@ -27,34 +27,40 @@ def analyze(double[::1] samples not None, double sr, double resolution, double w
     Partial Tracking Analysis
     =========================
 
-    Analyze the audio samples, returns a generator for each partial.
+    Analyze the audio samples.
     Returns a list of 2D numpy arrays, where each array represent a partial with
-    columns: time, freq, amplitude, phase, bandwidth
+    columns: [time, freq, amplitude, phase, bandwidth]
 
     Arguments
     =========
 
-    samples ------> an array representing a mono sndfile. 
-                    >>> samples = read_aiff(sndfile)
-                    NB: if you have a stereo array, a channel can be selected with:
-                    >>> samples[:,0].copy()  --> the "left" channel 
-                    (.copy is needed, because we need a contiguous array)
-    sr ----------> the sampling rate
-    resolution --> in Hz (as passed to Loris's Analyzer). Only one partial will be found
-                    within this distance. Usable values range from 30 Hz to 200 Hz.
-    windowsize --> in Hz. If not given, a default value is calculated 
+    * samples: numpy.ndarray
+        An array representing a mono sndfile.   
+    * sr: int
+        The sampling rate
+    * resolution: Hz 
+        Only one partial will be found within this distance. 
+        Usual values range from 30 Hz to 200 Hz.
+    * windowsize: Hz.
+        If not given, a default value is calculated. The size
+        of the window in samples can be calculated: 
+        windowsize_in_samples = sr / windowsize_in_hz
 
     The rest of the parameters are set with sensible defaults if not given explicitely.
     (a value of -1 indicates that a default value should be set)
 
-    hoptime       : (sec) The time to move the window after each analysis. 
-    freqdrift     : (Hz)  The maximum variation of frecuency between two breakpoints to be
-                          considered to belong to the same partial. A sensible value is
-                          between 1/2 to 3/4 of resolution
-    sidelobe: (dB)  A positive dB value, indicates the shape of the Kaiser window
-                          (typical value: 90 dB)
-    ampfloor     : (dB)  A breakpoint with an amplitude lower than this value will not
-                          be considered
+    * hoptime: sec
+        The time to move the window after each analysis. 
+    * freqdrift: Hz  
+        The maximum variation of frecuency between two breakpoints to be
+        considered to belong to the same partial. A sensible value is
+        between 1/2 to 3/4 of resolution
+    * sidelobe: dB
+        A positive dB value, indicates the shape of the Kaiser window
+        (typical value: 90 dB)
+    * ampfloor: dB  
+        A breakpoint with an amplitude lower than this value will not 
+        be considered
     
     """
     if windowsize < 0:
