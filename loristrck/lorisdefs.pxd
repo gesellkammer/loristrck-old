@@ -3,7 +3,7 @@ from libcpp.vector cimport vector
 
 cdef extern from "../src/loris/src/Breakpoint.h" namespace "Loris":
     cdef cppclass Breakpoint "Loris::Breakpoint":
-        # Breakpoint( double f, double a, double b, double p = 0.)
+        Breakpoint( double f, double a, double b, double p=0.)
         double frequency()
         double amplitude()
         double bandwidth()
@@ -89,14 +89,31 @@ cdef extern from "../src/loris/src/AiffFile.h" namespace "Loris":
         double sampleRate()
         vector[double] & samples()
 
+cdef extern from "../src/loris/src/LinearEnvelope.h" namespace "Loris":
+    cppclass LinearEnvelope "Loris::LinearEnvelope":
+        # virtual double valueAt( double t ) const;
+        double valueAt(double t)
+
+cdef extern from "../src/loris/src/F0Estimate.h" namespace "Loris":
+    cppclass F0Estimate "Loris::F0Estimate":
+        double frequency()
+        double confidence()
+
+cdef extern from "../src/loris/src/Fundamental.h" namespace "Loris":
+    cppclass FundamentalFromPartials:
+        FundamentalFromPartials(double Precision)
+        F0Estimate estimateAt(PartialListIterator begin,
+                              PartialListIterator end,
+                              double time,
+                              double lowerFreqBound, double upperFreqBound)
+        LinearEnvelope buildEnvelope(
+            PartialListIterator begin, PartialListIterator end,
+            double tbeg, double tend,
+            double interval, 
+            double lowerFreqBound, double upperFreqBound,
+            double confidenceThreshold)
+
 cdef extern from "../src/loris/src/loris.h": #  namespace "Loris":
     void resample( PartialList * partials, double interval )
     void shapeSpectrum( PartialList * partials, PartialList * surface,
                         double stretchFreq, double stretchTime )
-
-
-    unsigned int synthesize( const PartialList * partials,
-                             double * buffer, unsigned int bufferSize,
-                             double srate)
-
-    # void timeSpan( PartialList * partials, double * tmin, double * tmax )

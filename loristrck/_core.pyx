@@ -10,6 +10,10 @@ cimport cython
 from cython.operator cimport dereference as deref, preincrement as inc
 import numpy as _np
 cimport numpy as _np
+from numpy.math cimport INFINITY
+from libc.math cimport ceil
+import logging
+logger = logging.getLogger("loristrck")
 
 _np.import_array()
 
@@ -67,6 +71,7 @@ def analyze(double[::1] samples not None, double sr, double resolution, double w
         windowsize = resolution * 2  # original Loris behaviour
     cdef loris.Analyzer* an = new loris.Analyzer(resolution, windowsize)
     if hoptime > 0:
+        logger.debug("Setting hoptime for Analyzer: {0}".format(hoptime))
         an.setHopTime(hoptime)
     if freqdrift > 0:
         an.setFreqDrift(freqdrift)
@@ -86,38 +91,59 @@ def analyze(double[::1] samples not None, double sr, double resolution, double w
     cdef list out = []
     while p_it != p_end:
         partial = deref(p_it)
-        out.append(partial_to_array(&partial))
+        out.append(Partial_toarray(&partial))
         inc(p_it)
     del an
     return out
 
 
-cdef _np.ndarray partial_to_array(loris.Partial* p):
+cdef _np.ndarray Partial_toarray(loris.Partial* p):
     cdef int numbps = p.numBreakpoints()
     cdef _np.ndarray [SAMPLE_t, ndim=2] arr = _np.empty((numbps, 5), dtype='float64')
-    cdef double[:, :] a = arr
+    # a = cvarray(shape=(numbps, 5), itemsize=sizeof(double), format="d")
+    cdef double *data = <double *>arr.data
+    # cdef double[:, ::1] a  = arr
     cdef loris.Partial_Iterator it  = p.begin()
     cdef loris.Partial_Iterator end = p.end()
     cdef loris.Breakpoint *bp
     cdef double time
     cdef int i = 0
+    cdef double *row
     while it != end:
         bp = &(it.breakpoint())
-        a[i, 0] = it.time()
-        a[i, 1] = bp.frequency()
-        a[i, 2] = bp.amplitude()
-        a[i, 3] = bp.phase()
-        a[i, 4] = bp.bandwidth()
+        row = data + 5*i
+        row[0] = it.time()
+        row[1] = bp.frequency()
+        row[2] = bp.amplitude()
+        row[3] = bp.phase()
+        row[4] = bp.bandwidth()
+        #a[i, 0] = it.time()
+        #a[i, 1] = bp.frequency()
+        #a[i, 2] = bp.amplitude()
+        #a[i, 3] = bp.phase()
+        #a[i, 4] = bp.bandwidth()
         i += 1
         inc(it)
     return arr
 
 
-cdef loris.Partial* newpartial_from_array(_np.ndarray[SAMPLE_t, ndim=2] a, double fadetime=0.0):
+cdef inline loris.Breakpoint* newBreakpoint(double f, double a, double ph, double bw):
+    cdef loris.Breakpoint* out = new loris.Breakpoint(f, a, bw)
+    #out.setFrequency(f)
+    #out.setAmplitude(a)
+    out.setPhase(ph)
+    #out.setBandwidth(bw)
+    return out
+
+
+cdef loris.Partial* newPartial_fromarray(_np.ndarray[SAMPLE_t, ndim=2] a, double fadetime=0.0):
     cdef loris.Partial *p = new loris.Partial()
     cdef int numbps = len(a)
-    cdef loris.Breakpoint *bp    
+    cdef loris.Breakpoint *bp 
+    cdef double *row   
     cdef double t
+    if a[0, 0] < 0:
+        return NULL
     if fadetime > 0 and a[0, 2] > 0:
         # we don't care here about Partials with negative time,
         # since we only insert breakpoints with non-negative times
@@ -126,28 +152,21 @@ cdef loris.Partial* newpartial_from_array(_np.ndarray[SAMPLE_t, ndim=2] a, doubl
         if a[0, 0] == 0:
             a[0, 2] = 0
         else:
-            bp = new loris.Breakpoint()
-            bp.setFrequency(a[0, 1])
-            bp.setAmplitude(0)
-            bp.setPhase(a[0, 3])
-            bp.setBandwidth(a[0, 4])
+            bp = newBreakpoint(a[0, 1], 0, a[0, 3], a[0, 4])
             p.insert(max(0, a[0, 0] - fadetime), deref(bp))
     # each row in a is (time, freq, amp, phase, bw)
-    for i in range(numbps):
-        t = a[i, 0]
-        if t >= 0:
-            bp = new loris.Breakpoint()
-            bp.setFrequency(a[i, 1])
-            bp.setAmplitude(a[i, 2])
-            bp.setPhase(a[i, 3])
-            bp.setBandwidth(a[i, 4])
-            p.insert(t, deref(bp))
+    if a.flags.c_contiguous:
+        row = (<double *>a.data)
+        for i in range(numbps):
+            bp = newBreakpoint(row[1], row[2], row[3], row[4])
+            p.insert(row[0], deref(bp))
+            row += 5
+    else:
+        for i in range(numbps):
+            bp = newBreakpoint(a[i, 1], a[i, 2], a[i, 3], a[i, 4])
+            p.insert(a[i, 0], deref(bp))
     if fadetime > 0 and a[numbps-1, 2] > 0:
-        bp = new loris.Breakpoint()
-        bp.setFrequency(a[numbps-1, 1])
-        bp.setAmplitude(0)
-        bp.setPhase(a[numbps-1, 3])
-        bp.setBandwidth(a[numbps-1, 4])
+        bp = newBreakpoint(a[numbps-1, 1], 0, a[numbps-1, 3], a[numbps-1, 4])
         p.insert(a[numbps-1, 0] + fadetime, deref(bp))
     return p
 
@@ -181,7 +200,7 @@ def read_sdif(str sdiffile):
     cdef list labels = []
     while p_it != p_end:
         partial = deref(p_it)
-        matrices.append(partial_to_array(&partial))
+        matrices.append(Partial_toarray(&partial))
         labels.append(partial.label())
         inc(p_it)
     del sdif
@@ -192,15 +211,39 @@ def _isiterable(seq):
     return hasattr(seq, '__iter__') and not isinstance(seq, (str, bytes))
 
 
+
 cdef class PartialW:
     cdef loris.Partial *thisptr
     def __dealloc__(self):
         del self.thisptr
 
+
 cdef PartialW newPartialW(loris.Partial* p):
     cdef PartialW out = PartialW()
     out.thisptr = p
     return out
+
+
+cdef class PartialListW:
+    cdef loris.PartialList *thisptr
+    cdef list refs
+    
+    def __dealloc__(self):
+        while self.refs:
+            self.refs.pop()
+        self.thisptr.clear()
+        del self.thisptr
+
+
+cdef newPartialListW(dataseq, double fadetime=0):
+    cdef list refs = []
+    cdef loris.PartialList *plist = PartialList_fromdata(dataseq, refs, fadetime)
+    cdef PartialListW self = PartialListW()
+    cdef loris.LinearEnvelope* f0
+    cdef double t0, t1
+    self.refs = refs
+    self.thisptr = plist
+    return self
 
 
 def write_sdif(partials, str outfile, labels=None, rbep=True, double fadetime=0):
@@ -215,18 +258,19 @@ def write_sdif(partials, str outfile, labels=None, rbep=True, double fadetime=0)
     NB: The 1TRC format forces resampling
     """
     assert _isiterable(partials)
-    cdef list refs = []
-    cdef loris.PartialList *partial_list = _partials_from_data(partials, refs, fadetime)
+    # cdef list refs = []
+    # cdef loris.PartialList *partial_list = PartialList_fromdata(partials, refs, fadetime)
+    cdef PartialListW plist = newPartialListW(partials, fadetime)
     cdef int DEBUG = CONFIG['debug']
     if DEBUG: print("Converted to PartialList")
-    cdef loris.SdifFile* sdiffile = new loris.SdifFile(partial_list.begin(), partial_list.end())
+    cdef loris.SdifFile* sdiffile = new loris.SdifFile(plist.thisptr.begin(), plist.thisptr.end())
     cdef bytes b_outfile = bytes(outfile)
     cdef string filename = string(<char*>b_outfile)
     cdef int use_rbep = int(rbep)
     if labels is not None:
         if DEBUG: print("Setting Labels")
         assert _isiterable(labels)
-        _partials_set_labels(partial_list, labels)
+        PartialList_setlabels(plist.thisptr, labels)
     if DEBUG: print("Writing SDIF")
     with nogil:
         if use_rbep:
@@ -235,26 +279,26 @@ def write_sdif(partials, str outfile, labels=None, rbep=True, double fadetime=0)
             sdiffile.write1TRC(filename)
     if DEBUG: print("Finished writing SDIF")
     del sdiffile
-    destroy_partiallist(partial_list, refs)
+    # PartialList_destroy(partial_list, refs)
+    del plist
     
 
-cdef void destroy_partiallist(loris.PartialList *partials, list refs):
+cdef void PartialList_destroy(loris.PartialList *partials, list refs):
     """
-    refs: a list of PartialW, as filled by _partials_from_data
+    refs: a list of PartialW, as filled by PartialList_fromdata
     """
-    cdef loris.Partial *partial
     while refs:
         refs.pop()
     partials.clear()
     del partials
     
 
-cdef void _partials_set_labels(loris.PartialList *partial_list, labels):
+cdef void PartialList_setlabels(loris.PartialList *partial_list, labels):
     cdef loris.PartialListIterator p_it = partial_list.begin()
     cdef loris.PartialListIterator p_end = partial_list.end()
     cdef loris.Partial partial
     for label in labels:
-        assert isinstance(label, (int, float))
+        assert isinstance(label, int)
         partial = deref(p_it)
         partial.setLabel(int(label))
         inc(p_it)
@@ -262,24 +306,24 @@ cdef void _partials_set_labels(loris.PartialList *partial_list, labels):
             break
 
 
-cdef loris.PartialList* _partials_from_data(dataseq, list refs, double fadetime=0):
+cdef loris.PartialList* PartialList_fromdata(dataseq, list refs, double fadetime=0):
     """
     dataseq: a seq. of 2D double arrays, each array represents a partial
     refs: an empty list. It will be populated with references to the 
           created partials, wrapped as PartialW. You need these
           to destroy the PartialList
 
-    NB: to set the labels of the partials, call _partials_set_labels
+    NB: to set the labels of the partials, call PartialList_setlabels
     """
     cdef loris.PartialList *partials = new loris.PartialList()
     cdef loris.Partial *partial
     cdef int i = 0
     cdef int label
     for matrix in dataseq:
-        partial = newpartial_from_array(matrix, fadetime)
-        partials.push_back(deref(partial))
-        i += 1
-        refs.append(newPartialW(partial))
+        partial = newPartial_fromarray(matrix, fadetime)
+        if partial != NULL:
+            partials.push_back(deref(partial))
+            refs.append(newPartialW(partial))
     return partials
 
 
@@ -315,7 +359,7 @@ def read_aiff(path):
     return (mono, samplerate)
 
         
-cdef object _partials_timespan(loris.PartialList * partials):
+cdef object PartialList_timespan(loris.PartialList * partials):
     cdef loris.PartialListIterator it = partials.begin()
     cdef loris.PartialListIterator end = partials.end()
     cdef loris.Partial partial = deref(it)
@@ -329,44 +373,7 @@ cdef object _partials_timespan(loris.PartialList * partials):
     return tmin, tmax
 
 
-#def synthesize_old(dataseq, int samplerate, float fadetime=-1):
-#    """
-#    dataseq:    a seq. of 2D matrices, each matrix represents a partial
-#                Each row is a breakpoint of the form [time freq amp phase bw]
-    
-#    samplerate: the samplerate of the synthesized samples (Hz)
-    
-#    fadetime:   to avoid clicks, partials not ending in 0 amp should be faded
-#                If negative, a sensible default is used (seconds)
-
-#    --> samples: numpy 1D array of doubles holding the samples
-#    """
-#    if fadetime < 0:
-#        fadetime = max(0.001, 32.0/samplerate)
-#    cdef list refs = []
-#    cdef loris.PartialList *partials = _partials_from_data(dataseq, refs, fadetime)
-#    t0, t1 = _partials_timespan(partials)
-#    cdef int numsamples = int(t1 * samplerate)+1
-#    cdef vector[double] bufvector 
-#    bufvector.reserve(numsamples)
-#    for i in range(numsamples):
-#        bufvector.push_back(0)
-#    cdef loris.Synthesizer *synthesizer = new loris.Synthesizer(samplerate, bufvector, fadetime)
-#    cdef loris.Partial *lorispartial
-#    for matrix in dataseq:
-#        lorispartial = newpartial_from_array(matrix, fadetime)
-#        synthesizer.synthesize(lorispartial[0])
-#        del lorispartial
-#    cdef _np.ndarray [SAMPLE_t, ndim=1] bufnumpy = _np.zeros((numsamples,), dtype='float64')
-#    cdef int firstsample = int(t0 * samplerate)
-#    for i in range(numsamples):
-#        bufnumpy[i] = bufvector[firstsample+i]
-#    del synthesizer
-#    destroy_partiallist(partials, refs)
-#    return bufnumpy
-
-
-def synthesize(dataseq, int samplerate, float fadetime=-1):
+def synthesize(dataseq, int samplerate, double fadetime=-1):
     """
     dataseq:    a seq. of 2D matrices, each matrix represents a partial
                 Each row is a breakpoint of the form [time freq amp phase bw]
@@ -380,22 +387,32 @@ def synthesize(dataseq, int samplerate, float fadetime=-1):
     """
     if fadetime < 0:
         fadetime = max(0.001, 32.0/samplerate)
-    cdef list matrices = list(dataseq)
-    cdef float t0 = min(m[:,0][0] for m in matrices)
-    cdef float t1 = max(m[:,0][-1] for m in matrices)
+    cdef list matrices = dataseq if isinstance(dataseq, list) else list(dataseq)
+    cdef _np.ndarray [SAMPLE_t, ndim=2] m
+    cdef double t0 = INFINITY
+    cdef double t1 = 0
+    cdef double mt0, mt1
+    for m in matrices:
+        mt0 = m[0, 0]
+        if mt0 < t0:
+            t0 = mt0
+        mt1 = m[m.shape[0]-1, 0]
+        if mt1 > t1:
+            t1 = mt1
     cdef int numsamples = int(t1 * samplerate)+1
     cdef vector[double] bufvector 
     bufvector.reserve(numsamples)
-    for i in range(numsamples):
+    cdef int i = 0
+    while i < numsamples:
         bufvector.push_back(0)
+        i += 1
     cdef loris.Synthesizer *synthesizer = new loris.Synthesizer(samplerate, bufvector, fadetime)
     cdef loris.Partial *lorispartial
-    # cdef _np.ndarray [SAMPLE_t, ndim=2] matrix
-    for matrix in matrices:
-        if matrix[0, 0] < 0:
+    for m in matrices:
+        if m[0, 0] < 0:
             warnings.warn("synthesize: Partial with negative times found, skipping")
             continue
-        lorispartial = newpartial_from_array(matrix, fadetime)
+        lorispartial = newPartial_fromarray(m, fadetime)
         synthesizer.synthesize(lorispartial[0])
         del lorispartial
     cdef _np.ndarray [SAMPLE_t, ndim=1] bufnumpy = _np.zeros((numsamples,), dtype='float64')
@@ -404,3 +421,109 @@ def synthesize(dataseq, int samplerate, float fadetime=-1):
         bufnumpy[i] = bufvector[firstsample+i]
     del synthesizer
     return bufnumpy
+
+
+cdef object PartialList_estimatef0(loris.PartialList *plist, 
+                                   double minfreq, double maxfreq, double interval):
+    cdef double precission_in_hz = 0.1
+    cdef double confidence = 0.9
+    cdef loris.FundamentalFromPartials* est = new loris.FundamentalFromPartials(precission_in_hz)
+    cdef double t0, t1
+    t0, t1 = PartialList_timespan(plist)
+    cdef loris.LinearEnvelope env = est.buildEnvelope(
+        plist.begin(), plist.end(), t0, t1, interval, minfreq, maxfreq, confidence)
+    out = LinearEnvelope_toarray(&env, t0, t1, interval)
+    del est
+    return (out, t0, t1)
+
+
+cdef void F0Estimate_getdata(loris.F0Estimate f0, double *out):
+    out[0] = f0.frequency()
+    out[1] = f0.confidence()
+    # return f0.frequency(), f0.confidence()
+
+
+cdef tuple PartialList_estimatef0_with_confidence(loris.PartialList *plist, 
+                                                   double minfreq, double maxfreq, 
+                                                   double interval, double precission_in_hz=0.1):
+    cdef loris.FundamentalFromPartials *est = new loris.FundamentalFromPartials(precission_in_hz)
+    cdef double t0, t1
+    t0, t1 = PartialList_timespan(plist)
+    cdef long i = 0
+    cdef long numelements = arange_numelements(t0, t1, interval)
+    cdef double t
+    cdef double[2] data
+    cdef double[:] freqs = _np.zeros((numelements,), dtype='float64')
+    cdef double[:] confs = _np.zeros((numelements,), dtype='float64')
+    data[0] = 0
+    data[1] = 0
+    while i < numelements:
+        t = t0 + i*interval
+        F0Estimate_getdata(est.estimateAt(plist.begin(), plist.end(), t, minfreq, maxfreq), &(data[0]))
+        freqs[i] = data[0]
+        confs[i] = data[1]
+        i += 1
+    del est
+    return freqs, confs, t0, t1
+
+
+def estimatef0(matrices, double minfreq, double maxfreq, double interval):
+    """
+    Estimate the fundamental 
+
+    * matrices: a seq. of numpy 2D matrices, each matrix representing a partial
+    * minfreq, maxfreq: freq. range where to look for a fundamental
+    * interval: the time resolution of the fundamental
+
+    Returns freqs, confidencies, t0, t1
+
+    * freqs: numpy.array. The frequencies of the f0
+    * confidences: numpy.array, same size as freqs, contains the confiency of 
+                   each freq value
+    * t0, t1: the timespan of this spectrum. To calculate the times axes, use
+              numpy.arange(t0, t1, interval)
+
+    These represent a linear interpolation of the frequency of the fundamental
+    within the timespan t0-t1 with a grid defined by `interval`.
+    To each freq. value there is a confidency value, where 1 represents maximum
+    confidency, and values below 0.9 indicate unvoiced or very faint sounds. 
+
+    Example 1
+    =========
+
+    import scipy.interpolate
+    matrices, labels = read_sdif("path/to/sdif")
+    dt = 0.05  # estimate f0 at a 50 ms interval
+    freqs, confidencies, t0, t1 = estimatef0(matrices, 50, 2000, dt)
+    freqs *= confidences > 0.9
+    times = numpy.arange(t0, t1, dt)
+    f0 = scipy.interpolate.interp1d(times, freqs)
+
+    or f0 = bpf.core.Sampled(freqs, dt, t0)
+
+    print(f0(0.8))
+    """
+    cdef PartialListW plist = newPartialListW(matrices, 0)
+    out = PartialList_estimatef0_with_confidence(plist.thisptr, minfreq, maxfreq, interval)
+    del plist
+    return out
+    
+
+cdef long arange_numelements(double x0, double x1, double step):
+    return <long>(ceil((x1-x0)/step))
+
+
+cdef _np.ndarray LinearEnvelope_toarray(loris.LinearEnvelope* env, double x0, double x1, double interval):
+    cdef double x = x1
+    cdef double y
+    cdef long i = 0
+    cdef long numelements = arange_numelements(x0, x1, interval)
+    # cdef _np.ndarray[double, ndim=1] out = _np.zeros((numelements,), dtype='float64')
+    cdef double[:] out = _np.empty((numelements,), dtype='float64')
+    while i < numelements:
+        x = x0 + interval*i
+        y = env.valueAt(x)
+        out[i] = y
+        i += 1
+    return _np.asarray(out)
+
