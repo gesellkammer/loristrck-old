@@ -419,13 +419,15 @@ def synthesize(dataseq, int samplerate, double fadetime=-1):
         mt1 = m[m.shape[0]-1, 0]
         if mt1 > t1:
             t1 = mt1
-    cdef int numsamples = int((t1-t0) * samplerate)+1
-    cdef vector[double] bufvector
-    bufvector.reserve(numsamples)
+    cdef int numsamples = int(t1 * samplerate)+1
+    cdef vector[double] bufvector;
+    bufvector.resize(numsamples)
+    # bufvector.reserve(numsamples)
     cdef int i = 0
-    while i < numsamples:
-        bufvector.push_back(0)
-        i += 1
+    #while i < numsamples:
+    #    bufvector.push_back(0)
+    #    i += 1
+
     cdef loris.Synthesizer *synthesizer = new loris.Synthesizer(samplerate, bufvector, fadetime)
     cdef loris.Partial *lorispartial
     for m in matrices:
@@ -436,9 +438,9 @@ def synthesize(dataseq, int samplerate, double fadetime=-1):
         synthesizer.synthesize(lorispartial[0])
         del lorispartial
     cdef size_t offset = int(t0*samplerate)
-    cdef _np.ndarray [SAMPLE_t, ndim=1] bufnumpy = _np.zeros((numsamples+offset,), dtype='float64')
-    for i in range(numsamples):
-        bufnumpy[offset+i] = bufvector[i]
+    cdef _np.ndarray [SAMPLE_t, ndim=1] bufnumpy = _np.zeros((numsamples,), dtype='float64')
+    for i in range(offset, numsamples):
+        bufnumpy[i] = bufvector[i]
     del synthesizer
     return bufnumpy
 
