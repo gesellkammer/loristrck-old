@@ -171,7 +171,7 @@ cdef loris.Partial* newPartial_fromarray(_np.ndarray[SAMPLE_t, ndim=2] a, double
     return p
 
 
-def read_sdif(str sdiffile):
+def read_sdif(path):
     """
     Read the SDIF file
 
@@ -189,7 +189,8 @@ def read_sdif(str sdiffile):
     """
     cdef loris.SdifFile* sdif
     cdef loris.PartialList partials
-    cdef bytes path = bytes(sdiffile)
+    if not isinstance(path, bytes):
+        path = path.encode("ASCII", errors="inore")
     cdef string filename = string(<char*>path)
     sdif = new loris.SdifFile(filename)
     partials = sdif.partials()
@@ -209,7 +210,6 @@ def read_sdif(str sdiffile):
 
 def _isiterable(seq):
     return hasattr(seq, '__iter__') and not isinstance(seq, (str, bytes))
-
 
 
 cdef class PartialW:
@@ -234,8 +234,19 @@ cdef class PartialListW:
         self.thisptr.clear()
         del self.thisptr
 
+    def dump(self):
+        PartialList_dump(self.thisptr)
 
-cdef newPartialListW(dataseq, double fadetime=0):
+    def setlabels(self, labels):
+        PartialList_setlabels(self.thisptr, labels)
+
+    def __len__(self):
+        return self.thisptr.size()
+
+    
+
+
+cpdef PartialListW newPartialListW(dataseq, labels=None, double fadetime=0):
     cdef list refs = []
     cdef loris.PartialList *plist = PartialList_fromdata(dataseq, refs, fadetime)
     cdef PartialListW self = PartialListW()
@@ -243,6 +254,8 @@ cdef newPartialListW(dataseq, double fadetime=0):
     cdef double t0, t1
     self.refs = refs
     self.thisptr = plist
+    if labels is not None:
+        self.setlabels(labels)
     return self
 
 
@@ -260,27 +273,21 @@ def write_sdif(partials, str outfile, labels=None, rbep=True, double fadetime=0)
     assert _isiterable(partials)
     # cdef list refs = []
     # cdef loris.PartialList *partial_list = PartialList_fromdata(partials, refs, fadetime)
-    cdef PartialListW plist = newPartialListW(partials, fadetime)
-    cdef int DEBUG = CONFIG['debug']
-    if DEBUG: print("Converted to PartialList")
+    cdef PartialListW plist = newPartialListW(partials, labels, fadetime)
+    logger.debug("Converted to PartialList")
     cdef loris.SdifFile* sdiffile = new loris.SdifFile(plist.thisptr.begin(), plist.thisptr.end())
     cdef bytes b_outfile = bytes(outfile)
     cdef string filename = string(<char*>b_outfile)
     cdef int use_rbep = int(rbep)
-    if labels is not None:
-        if DEBUG: print("Setting Labels")
-        assert _isiterable(labels)
-        PartialList_setlabels(plist.thisptr, labels)
-    if DEBUG: print("Writing SDIF")
+    logger.debug("Writing SDIF")
     with nogil:
         if use_rbep:
             sdiffile.write(filename)
         else:
             sdiffile.write1TRC(filename)
-    if DEBUG: print("Finished writing SDIF")
+    logger.debug("Finished writing SDIF")
     del sdiffile
-    # PartialList_destroy(partial_list, refs)
-    del plist
+    del plist 
     
 
 cdef void PartialList_destroy(loris.PartialList *partials, list refs):
@@ -305,7 +312,20 @@ cdef void PartialList_setlabels(loris.PartialList *partial_list, labels):
         if p_it == p_end:
             break
 
-
+cdef void PartialList_dump(loris.PartialList *plist):
+    cdef loris.PartialListIterator p_it = plist.begin()
+    cdef loris.PartialListIterator p_end = plist.end()
+    cdef loris.Partial partial
+    cdef int label
+    cdef int idx = 0
+    while True:
+        partial = deref(p_it)
+        label = partial.label()
+        print("Idx: %d  Label: %d" % (idx, label))
+        inc(p_it)
+        if p_it == p_end:
+            break
+        
 cdef loris.PartialList* PartialList_fromdata(dataseq, list refs, double fadetime=0):
     """
     dataseq: a seq. of 2D double arrays, each array represents a partial
@@ -399,8 +419,8 @@ def synthesize(dataseq, int samplerate, double fadetime=-1):
         mt1 = m[m.shape[0]-1, 0]
         if mt1 > t1:
             t1 = mt1
-    cdef int numsamples = int(t1 * samplerate)+1
-    cdef vector[double] bufvector 
+    cdef int numsamples = int((t1-t0) * samplerate)+1
+    cdef vector[double] bufvector
     bufvector.reserve(numsamples)
     cdef int i = 0
     while i < numsamples:
@@ -415,10 +435,10 @@ def synthesize(dataseq, int samplerate, double fadetime=-1):
         lorispartial = newPartial_fromarray(m, fadetime)
         synthesizer.synthesize(lorispartial[0])
         del lorispartial
-    cdef _np.ndarray [SAMPLE_t, ndim=1] bufnumpy = _np.zeros((numsamples,), dtype='float64')
-    cdef int firstsample = int(t0 * samplerate)
+    cdef size_t offset = int(t0*samplerate)
+    cdef _np.ndarray [SAMPLE_t, ndim=1] bufnumpy = _np.zeros((numsamples+offset,), dtype='float64')
     for i in range(numsamples):
-        bufnumpy[i] = bufvector[firstsample+i]
+        bufnumpy[offset+i] = bufvector[i]
     del synthesizer
     return bufnumpy
 
@@ -526,4 +546,3 @@ cdef _np.ndarray LinearEnvelope_toarray(loris.LinearEnvelope* env, double x0, do
         out[i] = y
         i += 1
     return _np.asarray(out)
-
