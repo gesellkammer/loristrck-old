@@ -238,12 +238,14 @@ cdef class PartialListW:
         PartialList_dump(self.thisptr)
 
     def setlabels(self, labels):
+        """
+        labels: a seq. of int
+        """
+        assert _isiterable(labels)
         PartialList_setlabels(self.thisptr, labels)
 
     def __len__(self):
         return self.thisptr.size()
-
-    
 
 
 cpdef PartialListW newPartialListW(dataseq, labels=None, double fadetime=0):
@@ -255,11 +257,13 @@ cpdef PartialListW newPartialListW(dataseq, labels=None, double fadetime=0):
     self.refs = refs
     self.thisptr = plist
     if labels is not None:
+        if isinstance(labels, int):
+            labels = [labels] * len(self)
         self.setlabels(labels)
     return self
 
 
-def write_sdif(partials, str outfile, labels=None, rbep=True, double fadetime=0):
+def write_sdif2(partials, str outfile, labels=None, rbep=True, double fadetime=0):
     """
     Write a list of partials in the sdif 
     
@@ -289,6 +293,34 @@ def write_sdif(partials, str outfile, labels=None, rbep=True, double fadetime=0)
     del sdiffile
     del plist 
     
+def write_sdif(partials, outfile, labels=None, rbep=True, double fadetime=0):
+    """
+    Write a list of partials in the sdif 
+    
+    partials: a seq. of 2D arrays with columns [time freq amp phase bw]
+    outfile: the path of the sdif file
+    labels: a seq. of integer labels, or None to skip saving labels
+    rbep: if True, use RBEP format, otherwise, 1TRC
+
+    NB: The 1TRC format forces resampling
+    """
+    assert _isiterable(partials)
+    cdef PartialListW plist = newPartialListW(partials, labels, fadetime)
+    logger.debug("Converted to PartialList")
+    cdef loris.SdifFile* sdiffile = new loris.SdifFile(plist.thisptr.begin(), plist.thisptr.end())
+    if not isinstance(outfile, bytes):
+        outfile = outfile.encode("ASCII", errors="inore")
+    cdef string filename = string(<char*>outfile)
+    cdef int use_rbep = int(rbep)
+    logger.debug("Writing SDIF")
+    with nogil:
+        if use_rbep:
+            sdiffile.write(filename)
+        else:
+            sdiffile.write1TRC(filename)
+    logger.debug("Finished writing SDIF")
+    del sdiffile
+    del plist 
 
 cdef void PartialList_destroy(loris.PartialList *partials, list refs):
     """
