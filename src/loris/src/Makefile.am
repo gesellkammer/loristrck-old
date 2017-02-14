@@ -1,4 +1,4 @@
-# Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+# Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
 # <loris@cerlsoundgroup.org>
 #  
 # This file is free software; as a special exception the author gives
@@ -69,12 +69,14 @@ CPP_SRC = AiffData.C	\
 		Partial.h \
 		PartialBuilder.C	\
 		PartialBuilder.h	\
+		PartialList.C \
 		PartialList.h \
 		PartialPtrs.h \
 		PartialUtils.C \
 		PartialUtils.h \
 		phasefix.C	\
 		phasefix.h	\
+		PtrCopyOnWrite.h \
 		ReassignedSpectrum.C \
 		ReassignedSpectrum.h \
 		Resampler.C \
@@ -109,7 +111,7 @@ endif
 
 lib_LTLIBRARIES = libloris.la
 libloris_la_SOURCES = $(CPP_SRC) $(PI_SRC)
-libloris_la_CPPFLAGS = $(INCLUDE_FFTW) $(default_includes)
+libloris_la_CPPFLAGS = $(INCLUDE_FFTW) $(default_includes) -Wno-comment
 libloris_la_LIBADD = $(LINK_FFTW) $(CSOUND_LIB)
 
 # the library version for Loris 1.8 is 13:0:0
@@ -132,7 +134,7 @@ pkginclude_HEADERS = \
 				Distiller.h	\
 				Envelope.h	\
 				Exception.h	\
-                F0Estimate.h \
+				F0Estimate.h \
 				Filter.h	\
 				FourierTransform.h	\
 				FrequencyReference.h \
@@ -151,6 +153,7 @@ pkginclude_HEADERS = \
 				PartialList.h	\
 				PartialPtrs.h	\
 				PartialUtils.h	\
+				PtrCopyOnWrite.h \
 				ReassignedSpectrum.h	\
 				Resampler.h \
 				SdifFile.h	\

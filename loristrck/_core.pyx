@@ -13,19 +13,18 @@ cimport numpy as _np
 from numpy.math cimport INFINITY
 from libc.math cimport ceil
 import logging
+
 logger = logging.getLogger("loristrck")
 
 _np.import_array()
 
-CONFIG = {
-    'debug': False
-}
 
 ctypedef _np.float64_t SAMPLE_t
 
 
 def analyze(double[::1] samples not None, double sr, double resolution, double windowsize= -1, 
-            double hoptime =-1, double freqdrift =-1, sidelobe=-1, ampfloor=-90):
+            double hoptime =-1, double freqdrift =-1, double sidelobe=-1,
+            double ampfloor=-90, double croptime=-1):
 
     """
     Partial Tracking Analysis
@@ -49,12 +48,18 @@ def analyze(double[::1] samples not None, double sr, double resolution, double w
         If not given, a default value is calculated. The size
         of the window in samples can be calculated: 
         windowsize_in_samples = sr / windowsize_in_hz
+        "Should be approx. equal to, and never more than twice the freq.
+         resolution"
 
     The rest of the parameters are set with sensible defaults if not given explicitely.
     (a value of -1 indicates that a default value should be set)
 
     * hoptime: sec
         The time to move the window after each analysis. 
+        Default: 1/windowWidth. "hop time in secs is the inverse of the window width
+        really. Smith and Serra say: a good choice of hop is the window length
+        divided by the main lobe width in freq. samples, which turns out to be 
+        just the inverse of the width.
     * freqdrift: Hz  
         The maximum variation of frecuency between two breakpoints to be
         considered to belong to the same partial. A sensible value is
@@ -65,6 +70,9 @@ def analyze(double[::1] samples not None, double sr, double resolution, double w
     * ampfloor: dB  
         A breakpoint with an amplitude lower than this value will not 
         be considered
+    * croptime: secs. Is the max. time correction beyond which a seassigned 
+        spectral component is considered inreliable, and not eligible for
+        breakpoint formation. Default: the hop time. Should it be half that?
     
     """
     if windowsize < 0:
@@ -77,14 +85,19 @@ def analyze(double[::1] samples not None, double sr, double resolution, double w
         an.setFreqDrift(freqdrift)
     if sidelobe > 0:
         an.setSidelobeLevel( sidelobe )
+    if croptime > 0:
+        an.setCropTime( croptime )
     an.setAmpFloor(ampfloor)
+    logger.info("analysis: windowsize={0], hoptime={1}, freqDrift={2}".format(
+        an.windowWidth(), an.hopTime(), an.freqDrift()))
 
     cdef double *samples0 = &(samples[0])              #<double*> _np.PyArray_DATA(samples)
     cdef double *samples1 = &(samples[<int>(samples.size-1)]) #samples0 + <int>(samples.size - 1)
-    an.analyze(samples0, samples1, sr)  
+    # an.analyze(samples0, samples1, sr)  
 
     # yield all partials
-    cdef loris.PartialList partials = an.partials()
+    # cdef loris.PartialList partials = an.partials()
+    cdef loris.PartialList partials = an.analyze(samples0, samples1, sr)
     cdef loris.PartialListIterator p_it = partials.begin()
     cdef loris.PartialListIterator p_end = partials.end()
     cdef loris.Partial partial
@@ -100,9 +113,7 @@ def analyze(double[::1] samples not None, double sr, double resolution, double w
 cdef _np.ndarray Partial_toarray(loris.Partial* p):
     cdef int numbps = p.numBreakpoints()
     cdef _np.ndarray [SAMPLE_t, ndim=2] arr = _np.empty((numbps, 5), dtype='float64')
-    # a = cvarray(shape=(numbps, 5), itemsize=sizeof(double), format="d")
     cdef double *data = <double *>arr.data
-    # cdef double[:, ::1] a  = arr
     cdef loris.Partial_Iterator it  = p.begin()
     cdef loris.Partial_Iterator end = p.end()
     cdef loris.Breakpoint *bp
@@ -129,10 +140,7 @@ cdef _np.ndarray Partial_toarray(loris.Partial* p):
 
 cdef inline loris.Breakpoint* newBreakpoint(double f, double a, double ph, double bw):
     cdef loris.Breakpoint* out = new loris.Breakpoint(f, a, bw)
-    #out.setFrequency(f)
-    #out.setAmplitude(a)
     out.setPhase(ph)
-    #out.setBandwidth(bw)
     return out
 
 

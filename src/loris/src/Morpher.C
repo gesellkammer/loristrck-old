@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,6 +69,9 @@ const double Morpher::DefaultAmpShape = 1E-5;
 const double Morpher::DefaultBreakpointGap = 1E-4; // minimum time (sec) between Breakpoints in 
                                                    // morphed Partials
 
+const bool Morpher::DefaultDoLogAmplitudeMorphing = true;
+const bool Morpher::DefaultDoLogFrequencyMorphing = false;
+
 // helper declarations
 static inline bool partial_is_nonnull( const Partial & p );
 
@@ -89,8 +92,8 @@ Morpher::Morpher( const Envelope & f ) :
     _freqFixThresholdDb( DefaultFixThreshold ),
     _logMorphShape( DefaultAmpShape ),
     _minBreakpointGapSec( DefaultBreakpointGap ),
-    _doLogAmpMorphing( true ),
-    _doLogFreqMorphing( false )
+    _doLogAmpMorphing( DefaultDoLogAmplitudeMorphing ),
+    _doLogFreqMorphing( DefaultDoLogFrequencyMorphing )
 {
 }
 
@@ -107,8 +110,8 @@ Morpher::Morpher( const Envelope & ff, const Envelope & af, const Envelope & bwf
     _freqFixThresholdDb( DefaultFixThreshold ),
     _logMorphShape( DefaultAmpShape ),
     _minBreakpointGapSec( DefaultBreakpointGap ),
-    _doLogAmpMorphing( true ),
-    _doLogFreqMorphing( false )
+    _doLogAmpMorphing( DefaultDoLogAmplitudeMorphing ),
+    _doLogFreqMorphing( DefaultDoLogFrequencyMorphing )
 {
 }
 
@@ -382,7 +385,7 @@ Morpher::crossfade( PartialList::const_iterator beginSrc,
                     Partial::label_type label /* default 0 */ )
 {
     Partial nullPartial;
-    debugger << "crossfading unlabeled (labeled 0) Partials" << endl;
+    // debugger << "crossfading unlabeled (labeled 0) Partials" << endl;
     
     long debugCounter;
 
@@ -419,7 +422,7 @@ Morpher::crossfade( PartialList::const_iterator beginSrc,
             }
         }
     }
-    debugger << "kept " << debugCounter << " from sound 1" << endl;
+    // debugger << "kept " << debugCounter << " from sound 1" << endl;
 
     //    crossfade Partials corresponding to a morph weight of 1:
     debugCounter = 0;
@@ -453,7 +456,7 @@ Morpher::crossfade( PartialList::const_iterator beginSrc,
             }
         }
     }
-    debugger << "kept " << debugCounter << " from sound 2" << endl;
+    // debugger << "kept " << debugCounter << " from sound 2" << endl;
 }
 
 // ---------------------------------------------------------------------------
@@ -1073,11 +1076,11 @@ void Morpher::morph_aux( PartialCorrespondence & correspondence  )
         //  one of those Partials must have some Breakpoints
         Assert( src.numBreakpoints() != 0 || tgt.numBreakpoints() != 0 );
 
+        /*
         debugger << "morphing " << ( ( 0 < src.numBreakpoints() )?( 1 ):( 0 ) )
                    << " and " << ( ( 0 < tgt.numBreakpoints() )?( 1 ):( 0 ) )
-                   << " partials with label " <<    label << endl;
-                   
-        //  &^)     HEY LOOKIE HERE!!!!!!!!!!!!!                   
+                   << " partials with label " <<    label << endl;                   
+        */
         
         //  ensure that Partials begin and end at zero
         //  amplitude to solve the problem of Nulls 

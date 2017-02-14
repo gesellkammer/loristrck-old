@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -310,7 +310,7 @@ readMarkerData( std::istream & s, MarkerCk & ck, unsigned long chunkSize )
 static std::istream & 
 readSamples( std::istream & s, std::vector< Byte > & bytes )
 {	
-	debugger << "reading " << bytes.size() << " bytes of sample data" << endl;
+	// debugger << "reading " << bytes.size() << " bytes of sample data" << endl;
 
 	//	read integer samples without byte swapping: 
 	BigEndian::read( s, bytes.size(), 1, (char*)(&bytes[0]) );
@@ -746,9 +746,11 @@ convertBytesToSamples( const std::vector< Byte > & bytes,
 	const int bytesPerSample = bps / 8;
 	samples.resize( bytes.size() / bytesPerSample );
 
+    /*
 	debugger << "converting " << samples.size() << " samples of size " 
 			 << bps << " bits" << endl;
-
+    */
+    
 	//	shift sample bytes into a long integer, and 
 	//	scale to make a double:
 	const double oneOverMax = std::pow(0.5, double(bps-1));
@@ -807,9 +809,11 @@ convertSamplesToBytes( const std::vector< double > & samples,
 		++howManyBytes;
 	bytes.resize( howManyBytes );
 
+    /*
 	debugger << "converting " << samples.size() << " samples to size " 
 			 << bps << " bits" << endl;
-
+    */
+    
 	//	shift sample bytes into a long integer, and 
 	//	scale to make a double:
 	const double maxSample = std::pow(2., double(bps-1));

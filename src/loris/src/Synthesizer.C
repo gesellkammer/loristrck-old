@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -215,7 +215,7 @@ Synthesizer::synthesize( Partial p )
 {
     if ( p.numBreakpoints() == 0 )
     {
-        debugger << "Synthesizer ignoring a partial that contains no Breakpoints" << endl;
+        // debugger << "Synthesizer ignoring a partial that contains no Breakpoints" << endl;
         return;
     }
     
@@ -224,11 +224,12 @@ Synthesizer::synthesize( Partial p )
         Throw( InvalidPartial, "Tried to synthesize a Partial having start time less than 0." );
     }
 
+    /*
     debugger << "synthesizing Partial from " << p.startTime() * m_srateHz 
              << " to " << p.endTime() * m_srateHz << " starting phase "
              << p.initialPhase() << " starting frequency " 
              << p.first().frequency() << endl;
-             
+    */
     //  better to compute this only once:
     const double OneOverSrate = 1. / m_srateHz;
     

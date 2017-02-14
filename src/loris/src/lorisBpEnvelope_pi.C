@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,7 +81,6 @@ LinearEnvelope * createLinearEnvelope( void )
 {
 	try 
 	{
-		debugger << "creating LinearEnvelope" << endl;
 		return new LinearEnvelope();
 	}
 	catch( Exception & ex ) 
@@ -111,7 +110,6 @@ LinearEnvelope * copyLinearEnvelope( const LinearEnvelope * ptr_this )
 {
 	try 
 	{
-		debugger << "copying LinearEnvelope" << endl;
 		return new LinearEnvelope( *ptr_this );
 	}
 	catch( Exception & ex ) 
@@ -140,8 +138,6 @@ void destroyLinearEnvelope( LinearEnvelope * ptr_this )
 	try 
 	{
 		ThrowIfNull((LinearEnvelope *) ptr_this);
-		
-		debugger << "deleting LinearEnvelope" << endl;
 		delete ptr_this;
 	}
 	catch( Exception & ex ) 
@@ -173,10 +169,7 @@ void linearEnvelope_insertBreakpoint( LinearEnvelope * ptr_this,
 	try 
 	{
 		ThrowIfNull((LinearEnvelope *) ptr_this);
-		
-		debugger << "inserting point (" << time << ", " << val 
-				   << ") into LinearEnvelope" << endl;
-		ptr_this->insertBreakpoint(time, val);
+        ptr_this->insertBreakpoint(time, val);
 	}
 	catch( Exception & ex ) 
 	{

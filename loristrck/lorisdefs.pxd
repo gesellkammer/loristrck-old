@@ -59,12 +59,16 @@ cdef extern from "../src/loris/src/Analyzer.h" namespace "Loris":
     cppclass Analyzer "Loris::Analyzer":
         Analyzer(double resolution, double window_width)
         void configure( double resolution, double window_width )
-        void analyze( double* buffer, double* buffend, double srate)
-        PartialList & partials()
+        PartialList analyze( double* buffer, double* buffend, double srate)
+        # PartialList & partials()
         void setHopTime( double )
         void setFreqDrift( double )
         void setSidelobeLevel( double )
         void setAmpFloor( double )
+        void setCropTime( double )
+        double hopTime()
+        double freqDrift()
+        double windowWidth()
 
 cdef extern from "../src/loris/src/Synthesizer.h" namespace "Loris":
     cppclass Synthesizer "Loris::Synthesizer":

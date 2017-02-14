@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1035,8 +1035,8 @@ configureExportStruct( const SpcFile::partials_type & plist, double midipitch,
     if ( spcEI.numPartials < 1 || spcEI.numPartials > LargestLabel )
         Throw( FileIOException, "Partials must be distilled and labeled between 1 and 512." );
 
-    debugger << "startTime = " << spcEI.startTime << " endTime = " << spcEI.endTime 
-             << " hop = " << spcEI.hop << " partials = " << spcEI.numPartials << endl;
+    // debugger << "startTime = " << spcEI.startTime << " endTime = " << spcEI.endTime 
+    //         << " hop = " << spcEI.hop << " partials = " << spcEI.numPartials << endl;
 }
 
 // ---------------------------------------------------------------------------

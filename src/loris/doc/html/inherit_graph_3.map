@@ -1,0 +1,10 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node2" href="$a00010.html" title="Loris::BreakpointUtils\l::compareAmplitudeGreater" alt="" coords="187,5,378,47"/>
+<area shape="rect" id="node3" href="$a00011.html" title="Loris::BreakpointUtils\l::compareAmplitudeLess" alt="" coords="195,71,370,112"/>
+<area shape="rect" id="node4" href="$a00014.html" title="Loris::BreakpointUtils\l::compareFrequencyLess" alt="" coords="193,136,372,177"/>
+<area shape="rect" id="node5" href="$a00016.html" title="Loris::Marker::compareNameLess" alt="" coords="168,202,397,229"/>
+<area shape="rect" id="node6" href="$a00018.html" title="Loris::Marker::compareTimeLess" alt="" coords="171,253,395,279"/>
+<area shape="rect" id="node7" href="$a00012.html" title="Loris::PartialUtils\l::compareDurationGreater" alt="" coords="191,304,374,345"/>
+<area shape="rect" id="node8" href="$a00013.html" title="Loris::PartialUtils\l::compareDurationLess" alt="" coords="200,369,365,411"/>
+<area shape="rect" id="node9" href="$a00017.html" title="Loris::PartialUtils\l::compareStartTimeLess" alt="" coords="197,435,369,476"/>
+</map>

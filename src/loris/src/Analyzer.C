@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -293,8 +293,7 @@ Analyzer::Analyzer( const Analyzer & other ) :
     m_cropTime( other.m_cropTime ),
     m_bwAssocParam( other.m_bwAssocParam ),
     m_sidelobeLevel( other.m_sidelobeLevel ),
-    m_phaseCorrect( other.m_phaseCorrect ),
-    m_partials( other.m_partials )
+    m_phaseCorrect( other.m_phaseCorrect )
 {
     m_f0Builder.reset( other.m_f0Builder->clone() );
     m_ampEnvBuilder.reset( other.m_ampEnvBuilder->clone() );
@@ -324,7 +323,6 @@ Analyzer::operator=( const Analyzer & rhs )
         m_bwAssocParam = rhs.m_bwAssocParam;
         m_sidelobeLevel = rhs.m_sidelobeLevel;
         m_phaseCorrect = rhs.m_phaseCorrect;
-        m_partials = rhs.m_partials;
 
         m_f0Builder.reset( rhs.m_f0Builder->clone() );
         m_ampEnvBuilder.reset( rhs.m_ampEnvBuilder->clone() );
@@ -539,11 +537,11 @@ Analyzer::configure( const Envelope & resolutionEnv, double windowWidthHz )
 //! \param vec is a vector of floating point samples
 //! \param srate is the sample rate of the samples in the vector 
 //
-void 
+PartialList 
 Analyzer::analyze( const std::vector<double> & vec, double srate )      
 { 
     BreakpointEnvelope reference( 1.0 );
-    analyze( &(vec[0]),  &(vec[0]) + vec.size(), srate, reference ); 
+    return analyze( &(vec[0]),  &(vec[0]) + vec.size(), srate, reference ); 
 }
 
 // ---------------------------------------------------------------------------
@@ -558,11 +556,11 @@ Analyzer::analyze( const std::vector<double> & vec, double srate )
 //! samples
 //! \param srate is the sample rate of the samples in the buffer
 //
-void 
+PartialList 
 Analyzer::analyze( const double * bufBegin, const double * bufEnd, double srate )
 { 
     BreakpointEnvelope reference( 1.0 );
-    analyze( bufBegin,  bufEnd, srate, reference ); 
+    return analyze( bufBegin,  bufEnd, srate, reference ); 
 }
 
 // ---------------------------------------------------------------------------
@@ -578,11 +576,11 @@ Analyzer::analyze( const double * bufBegin, const double * bufEnd, double srate 
 //! \param reference is an Envelope having the approximate
 //! frequency contour expected of the resulting Partials.
 //
-void 
+PartialList 
 Analyzer::analyze( const std::vector<double> & vec, double srate, 
                    const Envelope & reference )     
 { 
-    analyze( &(vec[0]),  &(vec[0]) + vec.size(), srate, reference ); 
+    return analyze( &(vec[0]),  &(vec[0]) + vec.size(), srate, reference ); 
 }
 
 
@@ -601,7 +599,7 @@ Analyzer::analyze( const std::vector<double> & vec, double srate,
 //! \param reference is an Envelope having the approximate
 //! frequency contour expected of the resulting Partials.
 //
-void 
+PartialList 
 Analyzer::analyze( const double * bufBegin, const double * bufEnd, double srate,
                    const Envelope & reference )
 { 
@@ -615,7 +613,7 @@ Analyzer::analyze( const double * bufBegin, const double * bufEnd, double srate,
     {
         ++winlen;
     }
-    debugger << "Using Kaiser window of length " << winlen << endl;
+    // debugger << "Using Kaiser window of length " << winlen << endl;
     
     std::vector< double > window( winlen );
     KaiserWindow::buildWindow( window, winshape );
@@ -634,20 +632,14 @@ Analyzer::analyze( const double * bufBegin, const double * bufEnd, double srate,
     std::auto_ptr< AssociateBandwidth > bwAssociator;
     if( m_bwAssocParam > 0 )
     {
-        debugger << "Using bandwidth association regions of width " 
-                 << bwRegionWidth() << " Hz" << endl;
         bwAssociator.reset( new AssociateBandwidth( bwRegionWidth(), srate ) );
-    }
-    else
-    {
-        debugger << "Bandwidth association disabled" << endl;
     }
 
     //  reset envelope builders:
     m_ampEnvBuilder->reset();
     m_f0Builder->reset();
     
-    m_partials.clear();
+    PartialList partials;
         
     try 
     { 
@@ -704,12 +696,12 @@ Analyzer::analyze( const double * bufBegin, const double * bufEnd, double srate,
         }   //  end of loop over short-time frames
         
         //  unwarp the Partial frequency envelopes:
-        builder.finishBuilding( m_partials );
+        partials = builder.finishBuilding();
         
         //  fix the frequencies and phases to be consistent.
         if ( m_phaseCorrect )
         {
-            fixFrequency( m_partials.begin(), m_partials.end() );
+            fixFrequency( partials.begin(), partials.end() );
         }
         
         
@@ -730,6 +722,8 @@ Analyzer::analyze( const double * bufBegin, const double * bufEnd, double srate,
         ex.append( "analysis failed." );
         throw;
     }
+    
+    return partials;
 }
 
 // -- parameter access --
@@ -757,7 +751,6 @@ Analyzer::ampFloor( void ) const
 double 
 Analyzer::cropTime( void ) const 
 { 
-    // debugger << "Analyzer::cropTime() is a deprecated member, and will be removed in a future Loris release." << endl;
     return m_cropTime; 
 }
 
@@ -897,7 +890,6 @@ void
 Analyzer::setCropTime( double x ) 
 { 
     VERIFY_ARG( setCropTime, x > 0 );
-   // debugger << "Analyzer::setCropTime() is a deprecated member, and will be removed in a future Loris release." << endl;
     m_cropTime = x; 
 }
 
@@ -1155,31 +1147,7 @@ Analyzer::bwConvergenceTolerance( void ) const
 }
 
 
-// -- PartialList access --
-
-// ---------------------------------------------------------------------------
-//  partials
-// ---------------------------------------------------------------------------
-//! Return a mutable reference to this Analyzer's list of 
-//! analyzed Partials. 
-//
-PartialList & 
-Analyzer::partials( void ) 
-{ 
-    return m_partials; 
-}
-
-// ---------------------------------------------------------------------------
-//  partials
-// ---------------------------------------------------------------------------
-//! Return an immutable (const) reference to this Analyzer's 
-//! list of analyzed Partials. 
-//
-const PartialList & 
-Analyzer::partials( void ) const
-{ 
-    return m_partials; 
-}
+// -- envelope access --
 
 // ---------------------------------------------------------------------------
 //  buildFundamentalEnv
@@ -1367,8 +1335,6 @@ Analyzer::thinPeaks( Peaks & peaks, double frameTime  )
 		++it;
 	}
 	
-	// debugger << "thinPeaks retained " << std::distance( peaks.begin(), beginRejected ) << endl;
-
 	//  remove rejected Breakpoints:
 	//peaks.erase( beginRejected, peaks.end() );
 	

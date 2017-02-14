@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -169,9 +169,6 @@ Dilator::warpTime( double currentTime ) const
 void
 Dilator::dilate( Partial & p ) const
 {
-	debugger << "dilating Partial having " << p.numBreakpoints() 
-			 << " Breakpoints" << endl;
-
 	//	sanity check:
 	Assert( _initial.size() == _target.size() );
 	

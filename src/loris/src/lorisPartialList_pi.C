@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,9 +58,8 @@
 #include "lorisException_pi.h"
 
 #include "Partial.h"
+#include "PartialList.h"
 #include "Notifier.h"
-
-#include <list>
 
 using namespace Loris;
 
@@ -91,8 +90,7 @@ PartialList * createPartialList( void )
 {
 	try 
 	{
-		debugger << "creating empty PartialList" << endl;
-		return new std::list< Partial >;
+		return new PartialList;
 	}
 	catch( Exception & ex ) 
 	{
@@ -120,8 +118,6 @@ void destroyPartialList( PartialList * ptr_this )
 	try 
 	{
 		ThrowIfNull((PartialList *) ptr_this);
-
-		debugger << "deleting PartialList containing " << ptr_this->size() << " Partials" << endl;
 		delete ptr_this;
 	}
 	catch( Exception & ex ) 
@@ -180,8 +176,6 @@ void partialList_copy( PartialList * dst, const PartialList * src )
 	{
 		ThrowIfNull((PartialList *) dst);
 		ThrowIfNull((PartialList *) src);
-
-		debugger << "copying PartialList containing " << src->size() << " Partials" << endl;
 		*dst = *src;
 	}
 	catch( Exception & ex ) 
@@ -240,9 +234,8 @@ void partialList_splice( PartialList * dst, PartialList * src )
 		ThrowIfNull((PartialList *) dst);
 		ThrowIfNull((PartialList *) src);
 
-		debugger << "splicing PartialList containing " << src->size() << " Partials" 
-				 << " into PartialList containing " << dst->size() << " Partials"<< endl;
-		dst->splice( dst->end(), *src );
+        dst->splice( dst->end(), *src );
+
 	}
 	catch( Exception & ex ) 
 	{

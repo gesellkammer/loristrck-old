@@ -1,0 +1,8 @@
+<map id="Loris::PartialUtils::PartialMutator" name="Loris::PartialUtils::PartialMutator">
+<area shape="rect" id="node3" href="$a00003.html" title="Loris::PartialUtils\l::AmplitudeScaler" alt="" coords="365,5,496,47"/>
+<area shape="rect" id="node4" href="$a00005.html" title="Loris::PartialUtils\l::BandwidthScaler" alt="" coords="364,71,497,112"/>
+<area shape="rect" id="node5" href="$a00006.html" title="Loris::PartialUtils\l::BandwidthSetter" alt="" coords="366,136,495,177"/>
+<area shape="rect" id="node6" href="$a00026.html" title="Loris::PartialUtils\l::FrequencyScaler" alt="" coords="363,201,498,243"/>
+<area shape="rect" id="node7" href="$a00046.html" title="Loris::PartialUtils\l::NoiseRatioScaler" alt="" coords="363,267,499,308"/>
+<area shape="rect" id="node8" href="$a00054.html" title="Loris::PartialUtils\l::PitchShifter" alt="" coords="369,332,492,373"/>
+</map>

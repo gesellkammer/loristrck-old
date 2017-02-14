@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -140,7 +140,7 @@ find_overlapping( Partial & p, double minGapTime, Iter start, Iter end)
 			//	are sorted by duration)
 			Assert( p.duration() <= (*it)->duration() );
 			
-#if Debug_Loris
+/*
 			debugger << "Partial starting " << p.startTime() << ", " 
 					 << p.begin().breakpoint().frequency() << " ending " 
 					 << p.endTime()  << ", " << (--p.end()).breakpoint().frequency() 
@@ -148,7 +148,7 @@ find_overlapping( Partial & p, double minGapTime, Iter start, Iter end)
 					 << (*it)->startTime() << ", " << (*it)->begin().breakpoint().frequency()
 					 << " ending " << (*it)->endTime() << ", " 
 					 << (--(*it)->end()).breakpoint().frequency()  << endl;
-#endif
+*/
 			return it;
 		}
 	}

@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -506,7 +506,7 @@ Channelizer::channelize( Partial & partial ) const
 {
     using std::pow;
 
-	debugger << "channelizing Partial with " << partial.numBreakpoints() << " Breakpoints" << endl;
+	// debugger << "channelizing Partial with " << partial.numBreakpoints() << " Breakpoints" << endl;
 			
 	//	compute an amplitude-weighted average channel
 	//	label for each Partial:

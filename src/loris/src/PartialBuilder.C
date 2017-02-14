@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -114,14 +114,16 @@ static inline double end_frequency( const Partial & partial )
 }
 
 // ---------------------------------------------------------------------------
-//	freq_distance
+//	warped_freq_distance
 // ---------------------------------------------------------------------------
 //	Helper function, used in formPartials().
 //	Returns the (positive) frequency distance between a Breakpoint 
 //	and the last Breakpoint in a Partial.
 //
+//  Compute distance using warped frequencies
+//
 inline double 
-PartialBuilder::freq_distance( const Partial & partial, const SpectralPeak & pk )
+PartialBuilder::warped_freq_distance( const Partial & partial, const SpectralPeak & pk )
 {
     double normBpFreq = pk.frequency() / mFreqWarping->valueAt( pk.time() );
     
@@ -149,7 +151,7 @@ bool PartialBuilder::better_match( const Partial & part, const SpectralPeak & pk
 {
 	Assert( part.numBreakpoints() > 0 );
 	
-	return freq_distance( part, pk1 ) < freq_distance( part, pk2 );
+	return warped_freq_distance( part, pk1 ) < warped_freq_distance( part, pk2 );
 }	                                   
                                    
 bool PartialBuilder::better_match( const Partial & part1, 
@@ -158,7 +160,7 @@ bool PartialBuilder::better_match( const Partial & part1,
 	Assert( part1.numBreakpoints() > 0 );
 	Assert( part2.numBreakpoints() > 0 );
 	
-	return freq_distance( part1, pk ) < freq_distance( part2, pk );
+	return warped_freq_distance( part1, pk ) < warped_freq_distance( part2, pk );
 }	
 
 // --- Partial building members ---
@@ -172,10 +174,7 @@ bool PartialBuilder::better_match( const Partial & part1,
 //
 //	This is similar to the basic MQ partial formation strategy, except that
 //	before matching, all frequencies are normalized by the value of the 
-//	warping envelope at the time of the current frame. This means that
-//	the frequency envelopes of all the Partials are warped, and need to 
-//	be un-normalized by calling finishBuilding at the end of the building
-//  process.
+//	warping envelope at the time of the current frame. 
 //
 void 
 PartialBuilder::buildPartials( Peaks & peaks, double frameTime )
@@ -287,31 +286,28 @@ PartialBuilder::buildPartials( Peaks & peaks, double frameTime )
 	}			 
 	 	
 	mEligiblePartials = mNewlyEligible;
-	
-    /*
-	debugger << "PartialBuilder::buildPartials: matched " << matchCount << endl;
-	debugger << "PartialBuilder::buildPartials: " << mNewlyEligible.size() << " newly eligible partials" << endl;
-    */
+
 }
 
 // ---------------------------------------------------------------------------
 //	finishBuilding
 // ---------------------------------------------------------------------------
-//	Un-do the frequency warping performed in buildPartials, and return 
-//	the Partials that were built. After calling finishBuilding, the
+//	Return the Partials that were built. After calling finishBuilding, the
 //  builder is returned to its initial state, and ready to build another
-//  set of Partials. Partials are returned by appending them to the 
-//  supplied PartialList.
+//  set of Partials. 
 //
-void
-PartialBuilder::finishBuilding( PartialList & product )
+PartialList
+PartialBuilder::finishBuilding( void )
 {	
-    //  append the collected Partials to the product list:
-	product.splice( product.end(), mCollectedPartials );
+    //  return the collected Partials:
+	PartialList product = mCollectedPartials;
     
     //  reset the builder state:
+    mCollectedPartials.clear();
     mEligiblePartials.clear();
     mNewlyEligible.clear();
+    
+    return product;
 }
 
 

@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -117,9 +117,6 @@ struct ends_before : public std::unary_function< const Partial, bool >
 //
 void Collator::collateAux( PartialList & unlabeled  )
 {
-	debugger << "Collator found " << unlabeled.size() 
-			 << " unlabeled Partials, collating..." << endl;
-	
 	// 	sort Partials by end time:
 	// 	thanks to Ulrike Axen for this optimal algorithm!
 	unlabeled.sort( ends_earlier );
@@ -184,7 +181,7 @@ void Collator::collateAux( PartialList & unlabeled  )
 		}
 	}
 	
-	debugger << "...now have " << unlabeled.size() << endl;
+	// debugger << "...now have " << unlabeled.size() << endl;
 }
 
 }	//	end of namespace Loris

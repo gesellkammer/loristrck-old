@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
  *
  *
  * Phase correction added by Kelly 13 Dec 2005.
+ * Interface updated by Kelly Aug 2010.
  */
 #if HAVE_CONFIG_H
 	#include "config.h"
@@ -48,24 +49,30 @@
 #include "Partial.h"
 #include "phasefix.h"
 
+#include <algorithm>
 #include <cmath>
 
 //	begin namespace
 namespace Loris {
 
-//  helper declarations:
-static Partial::iterator insert_resampled_at( Partial & newp, const Partial & p, 
-                                              double sampleTime, double insertTime );
-
 /*
 TODO
-    - remove empties (currently handled automatically in the Python module
+    X remove empties (currently handled automatically in the Python module)
     
-    - remove insert_resampled_at
+    X simplify interface, operate on containers, not iterator ranges
+        - only two operations, resample and quantize, taking either a
+        Partial or a PartialList, remove the static member too
+    
+    X remove insert_resampled_at (??)
     
     - phase correct with timing?
     
+    - timing envelope as class member? Like morphing envelopes?
+    
+    - in-place operation? 
+    
     - fade time (for amplitude envelope sampling) - equal to interval? half?
+        wtf???
 */
 
 
@@ -120,27 +127,31 @@ void Resampler::setPhaseCorrect( bool correctPhase )
 // ---------------------------------------------------------------------------
 //	resample
 // ---------------------------------------------------------------------------
-//! Resample a Partial using this Resampler's stored quanitization interval.
-//! If sparse resampling (the default) has be selected, Breakpoint times
-//! are quantized to integer multiples of the resampling interval.
-//! If dense resampling is selected, a Breakpoint will be provided at
-//! every integer multiple of the resampling interval in the time span of
-//! the Partial, starting and ending with the nearest multiples to the
-//! ends of the Partial. Frequencies and phases are corrected to be in 
-//! agreement and to match as nearly as possible the resampled phases if
-//! phase correct resampling is specified (the default). Resampling
-//! is performed in-place. 
+//! Resample the specified Partial using the stored quanitization interval. 
+//! The Breakpoint times will comprise a contiguous sequence of all integer 
+//! multiples of the sampling interval, starting and ending with the nearest 
+//! multiples to the ends of the Partial. If phase correct resampling is 
+//! specified (the default)≤ frequencies and phases are corrected to be in 
+//! agreement and to match as nearly as possible the resampled phases. 
+//!
+//! Resampling is performed in-place. 
 //!
 //! \param  p is the Partial to resample
 //
 void 
 Resampler::resample( Partial & p ) const
 {
-	debugger << "resampling Partial labeled " << p.label()
-	         << " having " << p.numBreakpoints() 
-			 << " Breakpoints" << endl;
-
-
+    //  for phase-correct resampling, first make the phases correct by
+    //  fixing them from the initial phase (ideally this should have
+    //  no effect but there's no way to be phase-correct after resampling
+    //  unless the phases start correct), then resample the Breakpoint
+    //  times, then afterwards, adjust the frequencies to match
+    //  the interpolated phases:
+    if ( phaseCorrect_ )
+    {
+        fixPhaseForward( p.begin(), --p.end() );
+    }
+    
 	//	create the new Partial:
 	Partial newp;
 	newp.setLabel( p.label() );
@@ -150,19 +161,22 @@ Resampler::resample( Partial & p ) const
 	double lastInsertTime  = p.endTime() + ( 0.5 * interval_ );
 		
 	//  resample:
-	for (  double tins = firstInsertTime; tins <= lastInsertTime; tins += interval_ ) 
+	for (  double insertTime = firstInsertTime; 
+	       insertTime <= lastInsertTime; 
+	       insertTime += interval_ ) 
 	{
-	    //  sample time is obtained from the timing envelope, if specified, 
-	    //  otherwise same as the insert time:
-	    double tsamp = tins;
-        insert_resampled_at( newp, p, tins, tins );        
+	    //  sample time is same as the insert time:
+	    double sampleTime = insertTime;
+	    
+        //  make a resampled Breakpoint:
+        Breakpoint newbp = p.parametersAt( sampleTime );
+                
+        newp.insert( insertTime, newbp );
+
 	}
 	
 	//	store the new Partial:
 	p = newp;
-    
-	debugger << "resampled Partial has " << p.numBreakpoints() 
-			 << " Breakpoints" << endl;
     
     
 	if ( phaseCorrect_ )
@@ -174,16 +188,22 @@ Resampler::resample( Partial & p ) const
 // ---------------------------------------------------------------------------
 //	resample
 // ---------------------------------------------------------------------------
-//! Resample a Partial using this Resampler's stored quanitization interval.
-//! If sparse resampling (the default) has be selected, Breakpoint times
-//! are quantized to integer multiples of the resampling interval.
-//! If dense resampling is selected, a Breakpoint will be provided at
-//! every integer multiple of the resampling interval in the time span of
-//! the Partial, starting and ending with the nearest multiples to the
-//! ends of the Partial. Frequencies and phases are corrected to be in 
-//! agreement and to match as nearly as possible the resampled phases if
-//! phase correct resampling is specified (the default). Resampling
-//! is performed in-place. 
+//! Resample the specified Partial using the stored quanitization interval. 
+//! The Breakpoint times will comprise a contiguous sequence of all integer 
+//! multiples of the sampling interval, starting and ending with the nearest 
+//! multiples to the ends of the Partial. If phase correct resampling is 
+//! specified (the default)≤ frequencies and phases are corrected to be in 
+//! agreement and to match as nearly as possible the resampled phases. 
+//!
+//! The timing envelope represents a warping of the time axis that is 
+//! applied during resampling. The Breakpoint times in resampled Partials 
+//! will a comprise contiguous sequence of all integer multiples of the 
+//! sampling interval between the first and last breakpoints in the timing 
+//! envelope, and each Breakpoint will represent the parameters of the 
+//! original Partial at the time that is the value of the timing envelope 
+//! at that instant. 
+//! 
+//! Resampling is performed in-place. 
 //!
 //! \param  p is the Partial to resample
 //!
@@ -197,11 +217,6 @@ Resampler::resample( Partial & p ) const
 void 
 Resampler::resample( Partial & p, const LinearEnvelope & timingEnv ) const
 {
-	debugger << "resampling Partial labeled " << p.label()
-	         << " having " << p.numBreakpoints() 
-			 << " Breakpoints" << endl;
-
-
     Assert(  0 != timingEnv.size() );
     
 	//	create the new Partial:
@@ -218,15 +233,13 @@ Resampler::resample( Partial & p, const LinearEnvelope & timingEnv ) const
 	       insertTime <= lastInsertTime; 
 	       insertTime += interval_ ) 
 	{
-	    //  sample time is obtained from the timing envelope, if specified, 
-	    //  otherwise same as the insert time:
+	    //  sample time is obtained from the timing envelope:
 	    double sampleTime = timingEnv.valueAt( insertTime );	    	            
         
         //  make a resampled Breakpoint:
         Breakpoint newbp = p.parametersAt( sampleTime );
                 
-        Partial::iterator ret_pos = newp.insert( insertTime, newbp );
-                
+        newp.insert( insertTime, newbp );                
 	}
 		
 	//  remove excess null Breakpoints at the ends of the newly-formed
@@ -258,29 +271,23 @@ Resampler::resample( Partial & p, const LinearEnvelope & timingEnv ) const
     
 	//	store the new Partial:
     p = newp;
-    
-    debugger << "resampled Partial has " << p.numBreakpoints() 
-			 << " Breakpoints" << endl;
+
 }
 
 // ---------------------------------------------------------------------------
 //	quantize
 // ---------------------------------------------------------------------------
-//! The Breakpoint times in the resampled Partial will comprise a  
-//! sparse sequence of integer multiples of the sampling interval,
-//! beginning with the multiple nearest to the Partial's start time and
-//! ending with the multiple nearest to the Partial's end time, and including
-//! only multiples that are near to Breakpoint times in the original Partial.
-//! Resampling is performed in-place. 
+//! Quantize the Breakpoint times using the specified Partial using the 
+//! stored quanitization interval. Each Breakpoint in the Partial is 
+//! replaced by a Breakpoint constructed by resampling the Partial at 
+//! the nearest integer multiple of the of the resampling interval.
+//! 
+//! Quantization is performed in-place. 
 //!
 //! \param  p is the Partial to resample
 //
 void Resampler::quantize( Partial & p ) const
 {
-	debugger << "quantizing Partial labeled " << p.label()
-	         << " having " << p.numBreakpoints() 
-			 << " Breakpoints" << endl;
-
     //  for phase-correct quantization, first make the phases correct by
     //  fixing them from the initial phase (ideally this should have
     //  no effect but there's no way to be phase-correct after quantization
@@ -355,43 +362,109 @@ void Resampler::quantize( Partial & p ) const
     {
         fixFrequency( newp, 5 );
     }
-    
-    
-	debugger << "quantized Partial has " << newp.numBreakpoints() 
-			 << " Breakpoints" << endl;
 
 	//	store the new Partial:
 	p = newp;
 }
 
 // ---------------------------------------------------------------------------
-//	insert_resampled_at (helper)
+//	is_empty_Partial (helper)
 // ---------------------------------------------------------------------------
-//
-static Partial::iterator 
-insert_resampled_at( Partial & newp, const Partial & p, 
-                     double sampleTime, double insertTime )
+// Predicate returning true if a Partial has no Breakpoints, used to prune 
+// away empties after resampling.
+
+static bool is_empty_Partial( Partial & p )
 {
-    //  make a resampled Breakpoint:
-    Breakpoint newbp = p.parametersAt( sampleTime );
-    
-    //  handle end points to reduce error at ends
-    if ( sampleTime < p.startTime() )
-    {
-        newbp.setAmplitude( p.first().amplitude() );
-    }
-    else if ( sampleTime > p.endTime() )
-    {
-        newbp.setAmplitude( p.last().amplitude() );
-    }
-   
-    
-    Partial::iterator ret_pos = newp.insert( insertTime, newbp );
-    
-    debugger << "inserted Breakpoint having amplitude " << newbp.amplitude() 
-             << " at time " << insertTime << endl;
-             
-    return ret_pos;             
+    return 0 == p.numBreakpoints();
+}    
+
+// ---------------------------------------------------------------------------
+//	resample (sequence of Partials)
+// ---------------------------------------------------------------------------
+//! Resample all Partials in the specified PartialList using this
+//! Resampler's stored quanitization interval. The Breakpoint times in 
+//! resampled Partials will comprise a contiguous sequence of all integer 
+//! multiples of the sampling interval, starting and ending with the nearest 
+//! multiples to the ends of the Partial. If phase correct resampling is 
+//! specified (the default)≤ frequencies and phases are corrected to be in 
+//! agreement and to match as nearly as possible the resampled phases. 
+//! 
+//! Resampling is performed in-place (the PartialList is modified). 
+//!	
+//!	\param plist is the container of Partials to resample
+//
+void Resampler::resample( PartialList & plist  ) const
+{
+    std::for_each( plist.begin(), plist.end(), *this );
+    /*
+	for ( PartialList::iterator it = plist.begin(); it != plist.end(); ++ it )
+	{
+		resample( *it );
+	}
+	*/
+	
+	//  prune away empties
+	plist.erase( 
+	    std::remove_if( plist.begin(), plist.end(), is_empty_Partial ),
+	    plist.end() );
+}
+
+// ---------------------------------------------------------------------------
+//	resample (sequence of Partials, with timing envelope)
+// ---------------------------------------------------------------------------
+//! Resample all Partials in the specified PartialList using this
+//! Resampler's stored sampling interval, so that the Breakpoints in 
+//! the Partial envelopes will all lie on a common temporal grid.
+//! The Breakpoint times in the resampled Partial will comprise a  
+//! contiguous sequence of integer multiples of the sampling interval,
+//! beginning with the multiple nearest to the Partial's start time and
+//! ending with the multiple nearest to the Partial's end time. Resampling
+//! is performed in-place. 
+//!	
+//!	\param plist is the container of Partials to resample
+//! \param  timingEnv is the timing envelope, a map of Breakpoint 
+//!         times in resampled Partials onto parameter sampling 
+//!         instants in the original Partials.
+//!	
+//
+void Resampler::resample( PartialList & plist,
+	               const LinearEnvelope & timingEnv ) const
+{
+	for ( PartialList::iterator it = plist.begin(); it != plist.end(); ++it )
+	{
+		resample( *it, timingEnv );
+	}
+
+	//  prune away empties
+	plist.erase( 
+	    std::remove_if( plist.begin(), plist.end(), is_empty_Partial ),
+	    plist.end() );
+	
+}
+
+// ---------------------------------------------------------------------------
+//	quantize (sequence of Partials)
+// ---------------------------------------------------------------------------
+//! Quantize all Partials in the specified PartialList.
+//! Each Breakpoint in the Partials is replaced by a Breakpoint
+//! constructed by resampling the Partial at the nearest
+//! integer multiple of the of the resampling interval.
+//!	
+//!	\param plist is the container of Partials to quantize
+//!	
+// 
+void Resampler::quantize( PartialList & plist  ) const	 
+{
+	for ( PartialList::iterator it = plist.begin(); it != plist.end(); ++it )
+	{
+		quantize( *it );
+	}
+	
+	//  prune away empties
+	plist.erase( 
+	    std::remove_if( plist.begin(), plist.end(), is_empty_Partial ),
+	    plist.end() );
+	
 }
 
 }	//	end of namespace Loris

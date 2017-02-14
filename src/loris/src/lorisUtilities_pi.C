@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,6 +62,7 @@
 #include "LorisExceptions.h"
 #include "Notifier.h"
 #include "Partial.h"
+#include "PartialList.h"
 #include "PartialUtils.h"
 
 #include <algorithm>
@@ -300,24 +301,24 @@ void crop( PartialList * partials, double t1, double t2 )
 extern "C"
 void extractIf( PartialList * src, PartialList * dst, 
                 int ( * predicate )( const Partial * p, void * data ),
-			 	    void * data )
+                void * data )
 {
 	try 
 	{
 		ThrowIfNull((PartialList *) src);
 		ThrowIfNull((PartialList *) dst);
         
-        /*
-		std::list< Partial >::iterator it = 
+        std::list< Partial >::iterator it = 
 			std::stable_partition( src->begin(), src->end(), 
 								   std::not1( PredWithPointer( predicate, data ) ) );
 		
+        PartialList tmp = src->extract( it, src->end() );
+		dst->splice( dst->end(), tmp );
+		/*
 		stable_partition should work, but seems sometimes to hang, 
 		especially when there are lots and lots of Partials. Do it
-		efficiently by hand instead.
+        by hand instead.
 		
-		dst->splice( dst->end(), *src, it, src->end() );
-		*/
 		std::list< Partial >::iterator it;
 		for ( it = std::find_if( src->begin(), src->end(), PredWithPointer( predicate, data ) );
 		      it != src->end(); 
@@ -329,6 +330,7 @@ void extractIf( PartialList * src, PartialList * dst,
 	        //  position before the splice is performed.
 	        dst->splice( dst->end(), *src, it++ );
 	    }
+		*/
 		
 	}
 	catch( Exception & ex ) 
@@ -360,17 +362,18 @@ void extractLabeled( PartialList * src, long label, PartialList * dst )
 		ThrowIfNull((PartialList *) src);
 		ThrowIfNull((PartialList *) dst);
     
-        /*
-		std::list< Partial >::iterator it = 
+        std::list< Partial >::iterator it = 
 			std::stable_partition( src->begin(), src->end(), 
 								        std::not1( PartialUtils::isLabelEqual(label) ) );
 		
+        PartialList tmp = src->extract( it, src->end() );
+		dst->splice( dst->end(), tmp );
+		
+		/*
 		stable_partition should work, but seems sometimes to hang, 
 		especially when there are lots and lots of Partials. Do it
-		efficiently by hand instead.
+        by hand instead.
 		
-		dst->splice( dst->end(), *src, it, src->end() );
-		*/
 		std::list< Partial >::iterator it;
 		for ( it = std::find_if( src->begin(), src->end(), PartialUtils::isLabelEqual(label) );
 		      it != src->end(); 
@@ -382,6 +385,8 @@ void extractLabeled( PartialList * src, long label, PartialList * dst )
 	        //  position before the splice is performed.
 	        dst->splice( dst->end(), *src, it++ );
 	    }
+        */
+		
 	}
 	catch( Exception & ex ) 
 	{
@@ -1008,6 +1013,15 @@ void shiftTime( PartialList * partials, double offset )
 }
 
 /* ---------------------------------------------------------------- */
+/* local_compare_label_less
+ */
+static bool local_compare_label_less( const Partial & lhs, const Partial & rhs )
+{
+    static PartialUtils::compareLabelLess c;
+    return c( lhs, rhs );
+}
+
+/* ---------------------------------------------------------------- */
 /*        sortByLabel        
 /*
 /*	Sort the Partials in a PartialList in order of increasing label.
@@ -1017,7 +1031,7 @@ void shiftTime( PartialList * partials, double offset )
 extern "C"
 void sortByLabel( PartialList * partials )
 {
-	partials->sort( PartialUtils::compareLabelLess() );	
+	partials->sort( local_compare_label_less );	
 }
 
 /* ---------------------------------------------------------------- */

@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@
 
 #include "Analyzer.h"
 #include "Notifier.h"
+#include "PartialList.h"
 
 using namespace Loris;
 
@@ -103,12 +104,12 @@ void analyzer_configure( double resolution, double windowWidth )
 	{
       if ( 0 == ptr_instance )
       {
-         debugger << "creating Analyzer" << endl;         
+         // debugger << "creating Analyzer" << endl;         
          ptr_instance = new Analyzer( resolution, windowWidth );
       }
       else
       {
-         debugger << "configuring Analyzer" << endl;         
+         // debugger << "configuring Analyzer" << endl;         
          ptr_instance->configure( resolution, windowWidth );
       }
 	}
@@ -157,10 +158,11 @@ void analyze( const double * buffer, unsigned int bufferSize,
 					ptr_instance->freqResolution() << endl;
 		if ( bufferSize > 0 )
 		{
-			ptr_instance->analyze( buffer, buffer + bufferSize, srate );
+			PartialList pp = ptr_instance->analyze( buffer, buffer + bufferSize, srate );
 		
 			//	splice the Partials into the destination list:
-			partials->splice( partials->end(), ptr_instance->partials() );
+        	partials->splice( partials->end(), pp );
+            
 		}
 	}
 	catch( Exception & ex ) 

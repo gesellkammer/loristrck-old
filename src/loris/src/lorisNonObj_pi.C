@@ -3,7 +3,7 @@
  * manipulation, and synthesis of digitized sounds using the Reassigned 
  * Bandwidth-Enhanced Additive Sound Model.
  *
- * Loris is Copyright (c) 1999-2010 by Kelly Fitz and Lippold Haken
+ * Loris is Copyright (c) 1999-2016 by Kelly Fitz and Lippold Haken
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -690,7 +690,14 @@ void importSpc( const char * path, PartialList * partials )
 	{
 		Loris::notifier << "importing Partials from " << path << Loris::endl;
 		Loris::SpcFile imp( path );
-		partials->insert( partials->end(), imp.partials().begin(), imp.partials().end() );
+        for ( Loris::SpcFile::partials_type::const_iterator it = imp.partials().begin();
+              it != imp.partials().end();
+              ++it )
+        {
+            partials->insert( partials->end(), *it );
+        }
+        //  works even with NO_TEMPLATE_MEMBERS defined, the following does not
+		// partials->insert( partials->end(), imp.partials().begin(), imp.partials().end() );
 
 	}
 	catch( Exception & ex ) 
@@ -794,7 +801,8 @@ void morph( const PartialList * src0, const PartialList * src1,
 		m.morph( src0->begin(), src0->end(), src1->begin(), src1->end() );
 				
 		//	splice the morphed Partials into dst:
-		dst->splice( dst->end(), m.partials() );
+        dst->splice( dst->end(), m.partials() );
+
 	}
 	catch( Exception & ex ) 
 	{
@@ -881,7 +889,7 @@ void morphWithReference( const PartialList * src0,
 		m.morph( src0->begin(), src0->end(), src1->begin(), src1->end() );
 				
 		//	splice the morphed Partials into dst:
-		dst->splice( dst->end(), m.partials() );
+        dst->splice( dst->end(), m.partials() );
 	}
 	catch( Exception & ex ) 
 	{
@@ -920,7 +928,8 @@ void resample( PartialList * partials, double interval )
 		
 		notifier << "resampling " << partials->size() << " Partials" << Loris::endl;
 
-      	Resampler::resample( partials->begin(), partials->end(), interval );
+      	Resampler r( interval );
+      	r.resample( *partials );
 
         //  remove any resulting empty Partials
         PartialList::iterator it = partials->begin();
@@ -954,8 +963,8 @@ void resample( PartialList * partials, double interval )
 /* ---------------------------------------------------------------- */
 /*        shapeSpectrum
 /*  Scale the amplitudes of a set of Partials by applying 
-    a spectral suface constructed from another set.
-    Strecth the spectral surface in time and frequency
+    a spectral surface constructed from another set.
+    Stretch the spectral surface in time and frequency
     using the specified stretch factors. 
  */
 extern "C"

@@ -10,14 +10,11 @@
 /* Define to 1 if you have the <csdl.h> header file. */
 /* #undef HAVE_CSDL_H */
 
-/* Define to 1 if you have the <csound/cs.h> header file. */
-/* #undef HAVE_CSOUND_CS_H */
-
 /* Define to 1 if you have the <dlfcn.h> header file. */
-/* #undef HAVE_DLFCN_H */
+#define HAVE_DLFCN_H 1
 
 /* Define to 1 if you have the <fftw3.h> header file. */
-/* #undef HAVE_FFTW3_H */
+#define HAVE_FFTW3_H 1
 
 /* Define to 1 if you have the <fftw.h> header file. */
 /* #undef HAVE_FFTW_H */
@@ -35,7 +32,7 @@
 #define HAVE_M_PI 1
 
 /* Define to 1 if you have the <Python.h> header file. */
-/* #undef HAVE_PYTHON_H */
+#define HAVE_PYTHON_H 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -58,6 +55,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
+#define LT_OBJDIR ".libs/"
+
 /* Define for compilers that do not support template member functions. */
 /* #undef NO_TEMPLATE_MEMBERS */
 
@@ -71,13 +71,16 @@
 #define PACKAGE_NAME "Loris"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Loris 1.8"
+#define PACKAGE_STRING "Loris 1.9"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "loris"
 
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.8"
+#define PACKAGE_VERSION "1.9"
 
 /* The size of `bool', as computed by sizeof. */
 #define SIZEOF_BOOL 1
@@ -95,22 +98,22 @@
 #define SIZEOF_INT 4
 
 /* The size of `int *', as computed by sizeof. */
-#define SIZEOF_INT_P 4
+#define SIZEOF_INT_P 8
 
 /* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 4
+#define SIZEOF_LONG 8
 
 /* The size of `short', as computed by sizeof. */
 #define SIZEOF_SHORT 2
 
 /* The size of `size_t', as computed by sizeof. */
-#define SIZEOF_SIZE_T 4
+#define SIZEOF_SIZE_T 8
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "1.8"
+#define VERSION "1.9"
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
